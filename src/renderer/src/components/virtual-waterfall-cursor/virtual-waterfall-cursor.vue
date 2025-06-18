@@ -1,22 +1,24 @@
 <template>
-  <div ref="container" class="waterfall-container" :style="containerStyle" @scroll="handleScroll">
-    <div v-for="(item, index) in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item, index)"
-      class="waterfall-item">
-      <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
-        @load="onImageLoad(item._id, $event)" />
-      <div v-else class="placeholder"></div>
+  <div ref="container" class="waterfall-container" :style="containerStyle" @scroll.passive="handleScroll">
+    <div class="waterfall-inner" :style="innerStyle">
+      <div v-for="(item, index) in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
+        class="waterfall-item">
+        <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
+          @load="onImageLoad(item._id, $event)" />
+        <div v-else class="placeholder"></div>
 
-      <!-- 插槽，允许外部传入 item-info 内容 -->
-      <div class="item-info" :data-index="index" :ref="el => setItemInfoHeight(el, index)">
-        <slot name="item-info" :item="item" :index="index"></slot>
+        <!-- 插槽，允许外部传入 item-info 内容 -->
+        <div class="item-info" :data-index="index" :ref="el => setItemInfoHeight(el, index)">
+          <slot name="item-info" :item="item" :index="index"></slot>
+        </div>
       </div>
+      <div v-if="isLoading" class="loading-indicator">加载中...</div>
     </div>
-    <div v-if="isLoading" class="loading-indicator">加载中...</div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 
 // Props定义
 const props = defineProps({
@@ -48,6 +50,22 @@ const containerHeight = ref(0);
 const nextCursor = ref(null);  // 游标分页
 const hasMore = ref(true);     // 是否还有更多数据
 
+const containerWidth = ref(0);
+const currentColumnCount = ref(3);
+const scrollTop = ref(0);
+const viewportHeight = ref(window.innerHeight);
+const itemPositions = ref([]);
+const VIEWPORT_BUFFER = 1000;
+const itemIndexMap = ref({});
+
+watch(items, () => {
+  const map = {};
+  items.value.forEach((item, index) => {
+    map[props.getItemId(item)] = index;
+  });
+  itemIndexMap.value = map;
+});
+
 // 动态获取 item-info 的高度
 const itemInfoHeights = ref([]); // 存储每个 item-info 高度的数组
 const imgRatiosRef = ref({});    // 存储图片比例
@@ -56,6 +74,7 @@ const imgRatiosRef = ref({});    // 存储图片比例
 const isLayoutUpdating = ref(false);
 const lastHeights = ref([]); // 缓存上一次的 item-info 高度
 
+let resizeObserver;
 
 // 获取数据的函数，使用游标分页
 const fetchItems = async () => {
@@ -97,71 +116,75 @@ const fetchItems = async () => {
 // 滚动事件处理，加载更多数据
 const handleScroll = () => {
   const containerEl = container.value;
-  const scrollPosition = containerEl.scrollTop + containerEl.clientHeight;
+  scrollTop.value = containerEl.scrollTop;
+  viewportHeight.value = containerEl.clientHeight;
+  const scrollPosition = scrollTop.value + viewportHeight.value;
   const containerHeightVal = containerEl.scrollHeight;
 
   if (scrollPosition >= containerHeightVal - 100 && !isLoading.value) {
     fetchItems();
   }
+  updateVisibleItems();
 };
 
 // 计算每个项目的位置（top/left），根据列数进行布局
 const itemWidth = ref(0);
 
+const updateColumnCount = () => {
+  const width = containerWidth.value;
+  const breakpoints = Object.entries(props.columnCount)
+    .map(([w, cols]) => ({ width: +w, cols }))
+    .sort((a, b) => b.width - a.width);
+  let cols = 3;
+  for (const bp of breakpoints) {
+    if (width >= bp.width) {
+      cols = bp.cols;
+      break;
+    }
+  }
+  currentColumnCount.value = cols;
+  itemWidth.value =
+    (containerWidth.value - (cols - 1) * props.gap) / cols;
+};
+
+const updateVisibleItems = () => {
+  visibleItems.value = itemPositions.value.filter(i =>
+    i.top + i.height >= scrollTop.value - VIEWPORT_BUFFER &&
+    i.top <= scrollTop.value + viewportHeight.value + VIEWPORT_BUFFER
+  );
+};
+
 const calculateItemPositions = () => {
   if (isLayoutUpdating.value) return; // 防止死循环
   isLayoutUpdating.value = true;
 
-  // 动态根据当前屏幕宽度选择列数
-  const screenWidth = window.innerWidth;  // 获取屏幕宽度
-  const breakpoints = Object.entries(props.columnCount)
-    .map(([w, cols]) => ({ width: +w, cols }))
-    .sort((a, b) => b.width - a.width);
+  updateColumnCount();
 
-  let columnCount = 3;  // 默认列数为 3
-  for (const bp of breakpoints) {
-    if (screenWidth >= bp.width) {
-      columnCount = bp.cols;
-      break;
-    }
-  }
+  const columnHeights = Array(currentColumnCount.value).fill(0);
 
-  itemWidth.value =
-    (container.value.offsetWidth - (columnCount - 1) * props.gap) / columnCount;  // 列宽度
-
-  const columnHeights = Array(columnCount).fill(0);  // 跟踪每一列的高度
-
-  visibleItems.value = items.value.map((item, index) => {
-    const aspectRatio = imgRatiosRef.value[item._id] || 1.5;
-    const imgHeight = itemWidth.value * aspectRatio;
+  itemPositions.value = items.value.map((item, index) => {
+    const ratio = imgRatiosRef.value[item._id] || 1.5;
+    const imgHeight = itemWidth.value * ratio;
     const extraHeight = itemInfoHeights.value[index] || 0;
-    const height = imgHeight + extraHeight; // 图片高度 + item-info 高度
+    const height = imgHeight + extraHeight;
 
-    const columnIndex = columnHeights.indexOf(Math.min(...columnHeights)); // 插入到最短列
+    const columnIndex = columnHeights.indexOf(Math.min(...columnHeights));
     const left = columnIndex * (itemWidth.value + props.gap);
     const top = columnHeights[columnIndex];
-
-    // 更新列的高度，为下一个项目分配空间（包含下方间距）
     columnHeights[columnIndex] += height + props.gap;
 
-    return {
-      ...item,
-      left,
-      top,
-      height,  // 设置每个项目的高度
-    };
+    return { ...item, left, top, height };
   });
 
-  // 计算最大列高度，并更新容器高度
   containerHeight.value = Math.max(...columnHeights) - props.gap;
   if (containerHeight.value < 0) containerHeight.value = 0;
 
-  // 在 DOM 更新后确保容器高度正确更新
   nextTick(() => {
     container.value.style.height =
       containerHeight.value > 0 ? `${containerHeight.value}px` : '100%';
   });
 
+  updateVisibleItems();
   isLayoutUpdating.value = false;
 };
 
@@ -173,8 +196,14 @@ const containerStyle = computed(() => ({
   height: containerHeight.value > 0 ? `${containerHeight.value}px` : '100%',
 }));
 
+const innerStyle = computed(() => ({
+  position: 'relative',
+  height: containerHeight.value + 'px',
+  width: containerWidth.value + 'px',
+}));
+
 // 获取每个项目的样式（定位和宽高）
-const getItemStyle = (item, index) => ({
+const getItemStyle = (item) => ({
   position: 'absolute',
   top: 0,
   left: 0,
@@ -209,9 +238,83 @@ const onImageLoad = (id, e) => {
   calculateItemPositions();
 };
 
+const insertItemToTop = async (newItem) => {
+  const id = props.getItemId(newItem);
+  newItem.originalWidth = newItem.width || 300;
+  newItem.originalHeight = newItem.height || 200;
+  delete imgRatiosRef.value[id];
+  items.value.unshift(newItem);
+  itemInfoHeights.value.unshift(0);
+  await nextTick();
+  calculateItemPositions();
+  container.value?.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const insertItemsToTop = async (newItems = []) => {
+  newItems.forEach(item => {
+    item.originalWidth = item.width || 300;
+    item.originalHeight = item.height || 200;
+    delete imgRatiosRef.value[props.getItemId(item)];
+  });
+  items.value.unshift(...newItems);
+  itemInfoHeights.value.unshift(...new Array(newItems.length).fill(0));
+  await nextTick();
+  calculateItemPositions();
+  container.value?.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const updateItem = async (id, data = {}) => {
+  const index = itemIndexMap.value[id];
+  if (index === undefined) return;
+  items.value[index] = { ...items.value[index], ...data };
+  await nextTick();
+  calculateItemPositions();
+};
+
+const updateItems = async (updates = []) => {
+  updates.forEach(({ id, data }) => {
+    const index = itemIndexMap.value[id];
+    if (index !== undefined) {
+      items.value[index] = { ...items.value[index], ...data };
+    }
+  });
+  await nextTick();
+  calculateItemPositions();
+};
+
+const removeItem = (id) => {
+  const idx = itemIndexMap.value[id];
+  if (idx === undefined) return;
+  items.value.splice(idx, 1);
+  itemInfoHeights.value.splice(idx, 1);
+  delete imgRatiosRef.value[id];
+  calculateItemPositions();
+};
+
+defineExpose({
+  insertItemToTop,
+  insertItemsToTop,
+  updateItem,
+  updateItems,
+  removeItem,
+});
+
 // 组件挂载时获取数据
 onMounted(() => {
+  resizeObserver = new ResizeObserver(([entry]) => {
+    containerWidth.value = entry.contentRect.width;
+    calculateItemPositions();
+  });
+  if (container.value) {
+    resizeObserver.observe(container.value);
+    containerWidth.value = container.value.clientWidth;
+  }
   fetchItems();
+  updateVisibleItems();
+});
+
+onUnmounted(() => {
+  resizeObserver && resizeObserver.disconnect();
 });
 </script>
 
@@ -225,6 +328,11 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   overflow-y: auto;
+}
+
+.waterfall-inner {
+  position: relative;
+  width: 100%;
 }
 
 .waterfall-item {
@@ -251,9 +359,5 @@ onMounted(() => {
   font-size: 14px;
   color: var(--text-regular);
 }
-
-.loading-indicator {
-  text-align: center;
-  padding: 20px;
-}
 </style>
+
