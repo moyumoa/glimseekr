@@ -22,6 +22,62 @@ const currentComponent = computed(() => {
   const loader = modalMap[modalKey.value]
   return loader ? defineAsyncComponent(loader) : null
 })
+
+/* 锁定页面 */
+const lockedPage = () => {
+  // 获取 section[data-masonry] 元素
+  const sectionElement = document.querySelector('section[data-masonry]') || document.querySelector('.virtual-waterfall-container')
+  document.body.style.overflow = 'hidden' // 禁止页面滚动
+  if (sectionElement) {
+    sectionElement.style.display = 'none'  // 隐藏瀑布流布局
+    sectionElement.style.pointerEvents = 'none' // 禁止鼠标事件穿透
+  }
+}
+
+/* 解锁页面 */
+const unlockedPage = () => {
+  // 恢复页面滚动
+  document.body.style.overflow = ''
+  // 显示瀑布流布局
+  const sectionElement = document.querySelector('section[data-masonry]') || document.querySelector('.virtual-waterfall-container')
+  if (sectionElement) {
+    sectionElement.style.display = ''  // 恢复瀑布流布局显示
+    sectionElement.style.pointerEvents = '' // 恢复鼠标事件穿透
+  }
+}
+
+watch(show, (val) => {
+  if (val) {
+    lockedPage()
+  } else {
+    unlockedPage()
+  }
+})
+
+onMounted(() => {
+  nextTick(() => {
+    const checkAndUpdate = () => {
+      const sectionElement = document.querySelector('section[data-masonry]') || document.querySelector('.virtual-waterfall-container')
+      if (sectionElement) {
+        // 根据show状态来控制页面样式
+        if (show.value) {
+          lockedPage()
+        } else {
+          unlockedPage()
+        }
+      } else {
+        setTimeout(checkAndUpdate, 100) // 如果没有找到，稍等再试
+      }
+    }
+    checkAndUpdate()
+  })
+
+})
+
+onUnmounted(() => {
+  unlockedPage() // 确保在组件卸载时恢复页面状态
+})
+
 </script>
 
 <style lang="scss" scoped>
@@ -33,7 +89,7 @@ const currentComponent = computed(() => {
   right: 0;
   bottom: 0;
   left: 0;
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.8);
 
   display: flex;
   align-items: center;
@@ -54,11 +110,11 @@ const currentComponent = computed(() => {
   height: calc(100vh - var(--header-height) - 6em);
   max-height: calc(100vh - var(--header-height) - 6em);
   border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.44);
   box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.025),
     0 4px 24px rgba(0, 0, 0, 0.2);
   // will-change: transform;
   overflow: visible;
-  will-change: unset;
+  will-change: unset; 
 }
 </style>

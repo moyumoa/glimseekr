@@ -1,18 +1,28 @@
 <template>
   <div ref="container" class="waterfall-container" :style="containerStyle" @scroll.passive="handleScroll">
+    <header>
+      <slot name="header" />
+    </header>
     <div class="waterfall-inner" :style="innerStyle">
       <section v-for="item in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
-        class="waterfall-item">
+        class="waterfall-item" :class="{ 'newly-inserted': item._justInserted }" :data-index="item.__index">
         <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
           @load="onImageLoad(item._id, $event)" />
         <div v-else class="placeholder"></div>
 
         <!-- 插槽，允许外部传入 item-info 内容 -->
         <div class="item-info" :data-index="item.__index" :ref="el => setItemInfoHeight(el, item.__index)">
-          <slot name="item-info" :item="item" :index="item.__index"></slot>
+          <slot name="extra" :item="item" :index="item.__index"></slot>
         </div>
       </section>
-      <div v-if="isLoading" class="loading-indicator">加载中...</div>
+
+      <div v-if="isLoading" class="loading-indicator">
+        <el-icon>
+          <Loading />
+        </el-icon>
+      </div>
+
+       <el-empty v-if="!isLoading && visibleItems.length === 0" description=" " style="margin-top: 20%" />
     </div>
   </div>
 </template>
@@ -20,6 +30,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { debounce } from '@mvmoo/us'
+import { ElButton, ElEmpty, ElIcon } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
 
 
 // Props定义
@@ -42,6 +54,9 @@ const props = defineProps({
     default: 16,  // 默认卡片之间的间距
   },
 });
+
+const DEFAULTWIDTH = 600; // 默认宽度
+const DEFAULTHEIGHT = 450; // 默认高度
 
 // 响应式变量
 const container = ref(null);
@@ -138,10 +153,8 @@ const updateColumnCount = () => {
     .map(([w, cols]) => ({ width: +w, cols }))
     .sort((a, b) => b.width - a.width);
   let cols = 2;
-  console.log('当前容器宽度:', width, '列数配置:', breakpoints);
   for (const bp of breakpoints) {
     if (width >= bp.width) {
-      console.log(`使用列数配置: ${bp.cols} 列, 宽度 >= ${bp.width}`);
       cols = bp.cols;
       break;
     }
@@ -244,8 +257,9 @@ const onImageLoad = (id, e) => {
 
 const insertItemToTop = async (newItem) => {
   const id = props.getItemId(newItem);
-  newItem.originalWidth = newItem.width || 300;
-  newItem.originalHeight = newItem.height || 200;
+  newItem.originalWidth = newItem.width || DEFAULTWIDTH;
+  newItem.originalHeight = newItem.height || DEFAULTHEIGHT;
+  newItem._justInserted = true
   delete imgRatiosRef.value[id];
   items.value.unshift(newItem);
   itemInfoHeights.value.unshift(0);
@@ -256,8 +270,8 @@ const insertItemToTop = async (newItem) => {
 
 const insertItemsToTop = async (newItems = []) => {
   newItems.forEach(item => {
-    item.originalWidth = item.width || 300;
-    item.originalHeight = item.height || 200;
+    item.originalWidth = item.width || DEFAULTWIDTH;
+    item.originalHeight = item.height || DEFAULTHEIGHT;
     delete imgRatiosRef.value[props.getItemId(item)];
   });
   items.value.unshift(...newItems);
@@ -334,9 +348,18 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
+header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
 .waterfall-inner {
   position: relative;
   width: 100%;
+  padding-bottom: 16px;
+  box-sizing: border-box;
 }
 
 .waterfall-item {
@@ -362,5 +385,27 @@ onUnmounted(() => {
   word-break: break-all;
   font-size: 14px;
   color: var(--text-regular);
+}
+
+.loading-indicator,
+.center-load-more {
+  text-align: center;
+  padding: 24px;
+}
+
+.newly-inserted {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

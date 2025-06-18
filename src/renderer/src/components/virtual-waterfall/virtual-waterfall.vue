@@ -1,5 +1,5 @@
 <template>
-  <section ref="containerRef" class="virtual-waterfall-container" :style="containerStyle" @scroll.passive="onScroll">
+  <section ref="containerRef" data-masonry class="virtual-waterfall-container" :style="containerStyle" @scroll.passive="onScroll">
     <header>
       <slot name="header" />
     </header>

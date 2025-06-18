@@ -1,5 +1,5 @@
 <template>
-  <FolderDetailModules v-if="paramsId && !showModal" :id="paramsId" :params="query" />
+  <FolderDetailModules v-if="paramsId && !showModalHook" :id="paramsId" :query="query" />
 
   <virtual-waterfall v-else ref="waterfallRef" :fetchPage="$api.space.list" :getItemId="item => item._id"
     :columnCount="{ 1920: 5, 1080: 4, 960: 3, 650: 2 }">
@@ -19,7 +19,7 @@
     <template #default="{ item, columnWidth, remove }">
       <flip-card lockHeightOnFlip :ref="el => el && flipCardMap.set(item._id, el)">
         <template #front="{ flip }">
-          <div class="vw-crad" @click="openModal(item)">
+          <div class="vw-crad" @click="openModalHook('folder', item._id, { folder: item.name })">
             <img v-if="item.cover" :src="`${item.cover}-thumb400.webp`" alt="" class="vw-crad-img" />
             <!--  :class="{'vw-crad-body-center': !item.cover}" -->
             <div class="vw-crad-body">
@@ -62,11 +62,11 @@
   </virtual-waterfall>
 
   <!-- 这里临时写死id -->
-  <Teleport to="body" v-if="showModal">
+  <!-- <Teleport to="body" v-if="showModal">
     <div class="modal-mask" @click.self="closeModal">
       <FolderDetailModules class="modal-body" id="5377d5c0684bd99202b194e63697e9a3" :params="modalParams" />
     </div>
-  </Teleport>
+  </Teleport> -->
 
 </template>
 <script setup>
@@ -160,28 +160,15 @@ const delFolder = ({ item, remove, flip }) => {
 }
 
 /* 跳转详情 */
-const showModal = ref(false)
-const modalParams = ref({})
-
-const openModal = ({ name: folder, ...rows }) => {
-  modalParams.value = { ...rows, folder }
-  showModal.value = true
+import { useModal } from '@/hooks'
+const { openModal: openModalHook, show: showModalHook } = useModal()
+const navito = (item) => {
+  // openModal('folder', item._id, { folder: item.name })
+  // router.push({
+  //   path: `/details/${item._id}`,
+  //   query: { folder: item.name }
+  // })
 }
-
-const closeModal = () => {
-  showModal.value = false
-  modalParams.value = {}
-}
-
-
-// import { useModal } from '@/hooks'
-// const navito = (item) => {
-//   // openModal('folder', item._id, { folder: item.name })
-//   // router.push({
-//   //   path: `/details/${item._id}`,
-//   //   query: { folder: item.name }
-//   // })
-// }
 
 usePageChannel('folder', ['detail'], (payload) => {
   const [key, { folder_id: id, ...value }] = Object.entries(payload)[0];
