@@ -1,7 +1,7 @@
 <template>
   <div ref="container" class="waterfall-container" :style="containerStyle" @scroll.passive="handleScroll">
     <div class="waterfall-inner" :style="innerStyle">
-      <div v-for="item in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
+      <section v-for="item in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
         class="waterfall-item">
         <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
           @load="onImageLoad(item._id, $event)" />
@@ -11,7 +11,7 @@
         <div class="item-info" :data-index="item.__index" :ref="el => setItemInfoHeight(el, item.__index)">
           <slot name="item-info" :item="item" :index="item.__index"></slot>
         </div>
-      </div>
+      </section>
       <div v-if="isLoading" class="loading-indicator">加载中...</div>
     </div>
   </div>
