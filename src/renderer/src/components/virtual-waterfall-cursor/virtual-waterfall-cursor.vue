@@ -1,7 +1,9 @@
 <template>
   <div ref="container" class="waterfall-container" :style="containerStyle" @scroll="handleScroll">
-    <div v-for="(item, index) in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item, index)" class="waterfall-item">
-      <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image" @load="onImageLoad(item._id, $event)" />
+    <div v-for="(item, index) in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item, index)"
+      class="waterfall-item">
+      <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
+        @load="onImageLoad(item._id, $event)" />
       <div v-else class="placeholder"></div>
 
       <!-- 插槽，允许外部传入 item-info 内容 -->
@@ -104,27 +106,38 @@ const handleScroll = () => {
 };
 
 // 计算每个项目的位置（top/left），根据列数进行布局
+const itemWidth = ref(0);
 const calculateItemPositions = () => {
   if (isLayoutUpdating.value) return; // 防止死循环
   isLayoutUpdating.value = true;
 
   // 动态根据当前屏幕宽度选择列数
   const screenWidth = window.innerWidth;  // 获取屏幕宽度
-  const columnCount = Object.keys(props.columnCount).find(
-    key => screenWidth >= key
-  ) || 3;  // 默认列数为 3
-  const columnWidth = container.value.offsetWidth / columnCount;  // 列宽度
+  const breakpoints = Object.entries(props.columnCount)
+    .map(([w, cols]) => ({ width: +w, cols }))
+    .sort((a, b) => b.width - a.width);
+
+  let columnCount = 3;  // 默认列数为 3
+  for (const bp of breakpoints) {
+    if (screenWidth >= bp.width) {
+      columnCount = bp.cols;
+      break;
+    }
+  }
+
+  itemWidth.value =
+    (container.value.offsetWidth - (columnCount - 1) * props.gap) / columnCount;  // 列宽度
 
   const columnHeights = Array(columnCount).fill(0);  // 跟踪每一列的高度
 
   visibleItems.value = items.value.map((item, index) => {
     const aspectRatio = imgRatiosRef.value[item._id] || 1.5;
-    const imgHeight = columnWidth * aspectRatio;
+    const imgHeight = itemWidth.value * aspectRatio;
     const extraHeight = itemInfoHeights.value[index] || 0;
     const height = imgHeight + extraHeight + props.gap; // 图片高度 + item-info 高度 + 间距
 
     const columnIndex = index % columnCount;  // 根据索引分配列
-    const left = columnIndex * (columnWidth + props.gap);
+    const left = columnIndex * (itemWidth.value + props.gap);
     const top = columnHeights[columnIndex];
 
     // 更新列的高度，为下一个项目分配空间
@@ -139,11 +152,13 @@ const calculateItemPositions = () => {
   });
 
   // 计算最大列高度，并更新容器高度
-  containerHeight.value = Math.max(...columnHeights);  // 根据列的最大高度来设置容器高度
+  containerHeight.value = Math.max(...columnHeights);
+
 
   // 在 DOM 更新后确保容器高度正确更新
   nextTick(() => {
-    container.value.style.height = `${containerHeight.value}px`;
+    container.value.style.height =
+      containerHeight.value > 0 ? `${containerHeight.value}px` : '100%';
   });
 
   isLayoutUpdating.value = false;
@@ -154,7 +169,7 @@ const containerStyle = computed(() => ({
   position: 'relative',
   width: '100%',
   overflowY: 'auto',
-  height: `${containerHeight.value}px`,  // 使用动态计算的容器高度
+  height: containerHeight.value > 0 ? `${containerHeight.value}px` : '100%',
 }));
 
 // 获取每个项目的样式（定位和宽高）
@@ -162,7 +177,7 @@ const getItemStyle = (item, index) => ({
   position: 'absolute',
   top: `${item.top}px`,
   left: `${item.left}px`,
-  width: `${container.value.offsetWidth / Object.keys(props.columnCount).length}px`,
+  width: `${itemWidth.value}px`,
   height: `${item.height}px`,  // 使用动态计算的高度
 });
 
