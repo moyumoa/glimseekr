@@ -1,15 +1,15 @@
 <template>
   <div ref="container" class="waterfall-container" :style="containerStyle" @scroll.passive="handleScroll">
     <div class="waterfall-inner" :style="innerStyle">
-      <div v-for="(item, index) in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
+      <div v-for="item in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
         class="waterfall-item">
         <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
           @load="onImageLoad(item._id, $event)" />
         <div v-else class="placeholder"></div>
 
         <!-- 插槽，允许外部传入 item-info 内容 -->
-        <div class="item-info" :data-index="index" :ref="el => setItemInfoHeight(el, index)">
-          <slot name="item-info" :item="item" :index="index"></slot>
+        <div class="item-info" :data-index="item.__index" :ref="el => setItemInfoHeight(el, item.__index)">
+          <slot name="item-info" :item="item" :index="item.__index"></slot>
         </div>
       </div>
       <div v-if="isLoading" class="loading-indicator">加载中...</div>
@@ -19,6 +19,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
+import { debounce } from '@mvmoo/us'
+
 
 // Props定义
 const props = defineProps({
@@ -135,9 +137,11 @@ const updateColumnCount = () => {
   const breakpoints = Object.entries(props.columnCount)
     .map(([w, cols]) => ({ width: +w, cols }))
     .sort((a, b) => b.width - a.width);
-  let cols = 3;
+  let cols = 2;
+  console.log('当前容器宽度:', width, '列数配置:', breakpoints);
   for (const bp of breakpoints) {
     if (width >= bp.width) {
+      console.log(`使用列数配置: ${bp.cols} 列, 宽度 >= ${bp.width}`);
       cols = bp.cols;
       break;
     }
@@ -158,7 +162,7 @@ const calculateItemPositions = () => {
   if (isLayoutUpdating.value) return; // 防止死循环
   isLayoutUpdating.value = true;
 
-  updateColumnCount();
+  updateColumnCount(); // TODO 如果这里能加个防抖就更好了
 
   const columnHeights = Array(currentColumnCount.value).fill(0);
 
@@ -173,7 +177,7 @@ const calculateItemPositions = () => {
     const top = columnHeights[columnIndex];
     columnHeights[columnIndex] += height + props.gap;
 
-    return { ...item, left, top, height };
+    return { ...item, __index: index, left, top, height };
   });
 
   containerHeight.value = Math.max(...columnHeights) - props.gap;
@@ -360,4 +364,3 @@ onUnmounted(() => {
   color: var(--text-regular);
 }
 </style>
-

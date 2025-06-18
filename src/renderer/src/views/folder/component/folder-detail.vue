@@ -4,7 +4,7 @@
     :getItemId="(item) => item._id"
     :getImageSrc="(item) => item.thumb_url"
     :params="{ folder_id: '5377d5c0684bd99202b194e63697e9a3' }"
-    :columnCount="{ 1920: 5, 1080: 4, 960: 3, 650: 2 }"
+    :columnCount="{ 1080: 5, 860: 4, 560: 3 }"
     :gap="16"
   >
     <template #item-info="{ item }">
