@@ -107,6 +107,7 @@ const handleScroll = () => {
 
 // 计算每个项目的位置（top/left），根据列数进行布局
 const itemWidth = ref(0);
+
 const calculateItemPositions = () => {
   if (isLayoutUpdating.value) return; // 防止死循环
   isLayoutUpdating.value = true;
@@ -134,14 +135,14 @@ const calculateItemPositions = () => {
     const aspectRatio = imgRatiosRef.value[item._id] || 1.5;
     const imgHeight = itemWidth.value * aspectRatio;
     const extraHeight = itemInfoHeights.value[index] || 0;
-    const height = imgHeight + extraHeight + props.gap; // 图片高度 + item-info 高度 + 间距
+    const height = imgHeight + extraHeight; // 图片高度 + item-info 高度
 
-    const columnIndex = index % columnCount;  // 根据索引分配列
+    const columnIndex = columnHeights.indexOf(Math.min(...columnHeights)); // 插入到最短列
     const left = columnIndex * (itemWidth.value + props.gap);
     const top = columnHeights[columnIndex];
 
-    // 更新列的高度，为下一个项目分配空间
-    columnHeights[columnIndex] += height;
+    // 更新列的高度，为下一个项目分配空间（包含下方间距）
+    columnHeights[columnIndex] += height + props.gap;
 
     return {
       ...item,
@@ -152,8 +153,8 @@ const calculateItemPositions = () => {
   });
 
   // 计算最大列高度，并更新容器高度
-  containerHeight.value = Math.max(...columnHeights);
-
+  containerHeight.value = Math.max(...columnHeights) - props.gap;
+  if (containerHeight.value < 0) containerHeight.value = 0;
 
   // 在 DOM 更新后确保容器高度正确更新
   nextTick(() => {
@@ -175,10 +176,12 @@ const containerStyle = computed(() => ({
 // 获取每个项目的样式（定位和宽高）
 const getItemStyle = (item, index) => ({
   position: 'absolute',
-  top: `${item.top}px`,
-  left: `${item.left}px`,
+  top: 0,
+  left: 0,
   width: `${itemWidth.value}px`,
-  height: `${item.height}px`,  // 使用动态计算的高度
+  height: `${item.height}px`, // 使用动态计算的高度
+  transform: `translate(${item.left}px, ${item.top}px)`,
+  willChange: 'transform',
 });
 
 // 获取 item-info 的高度，并计算样式
@@ -213,6 +216,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+::-webkit-scrollbar {
+  display: none;
+}
+
 .waterfall-container {
   position: relative;
   width: 100%;
@@ -223,18 +230,26 @@ onMounted(() => {
 .waterfall-item {
   position: absolute;
   width: 100%;
+  will-change: transform;
 }
 
 .waterfall-image {
   width: 100%;
   height: auto;
   object-fit: cover;
+  display: block;
+  border-radius: 16px;
+  border: 1px solid var(--divider-color);
 }
 
 .item-info {
-  padding: 10px;
-  background-color: #fff;
+  padding: 5px;
+  box-sizing: border-box;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* 超出换行 */
+  word-break: break-all;
+  font-size: 14px;
+  color: var(--text-regular);
 }
 
 .loading-indicator {

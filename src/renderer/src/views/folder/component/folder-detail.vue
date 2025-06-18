@@ -9,8 +9,9 @@
   >
     <template #item-info="{ item }">
       <div>
-        <div>{{ item.title }}</div>
-        <div>{{ item.description }}</div>
+        <div>{{ item.name }}</div>
+        <div>{{ item.size }}</div>
+        <div>测试内容超长会如何测试内容超长会如何测试内容超长会如何测试内容超长会如何测试内容超长会如何测试内容超长会如何</div>
       </div>
     </template>
   </virtual-waterfall-cursor>
