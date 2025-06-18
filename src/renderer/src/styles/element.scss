@@ -1,0 +1,50 @@
+$primary: #409eff;
+$success: #4caf50;
+$warning: #ffc107;
+$error: #f44336;
+$textPrimary: rgba(255, 255, 255, 0.87);
+$card-color: #1e1e1e;
+
+/* 📝 主文字颜色：高对比度，适合标题、主要内容 */
+$text-primary: rgba(255, 255, 255, 0.87);
+
+/* 📄 次级文字颜色：用于描述、时间、辅助信息等 */
+$text-secondary: rgba(255, 255, 255, 0.6);
+
+/* 🚫 禁用状态文字颜色：用于不可点击的按钮、输入框提示等 */
+$text-disabled: rgba(255, 255, 255, 0.38);
+
+/* ➖ 分割线 / 边框颜色：低调但可感知的边界 */
+$divider-color: #333333;
+
+// 设置 Element Plus 主题变量
+$colors: (
+  "primary": (
+    "base": $primary,
+  ),
+  "success": (
+    "base": $success,
+  ),
+  "warning": (
+    "base": $warning,
+  ),
+  "error": (
+    "base": $error,
+  ),
+);
+
+@use "element-plus/theme-chalk/src/common/var.scss" with (
+  $colors: $colors,
+  // $descriptions: (
+  //   "item-bordered-label-background": $card-color,
+  //   "table-border": 1px solid $divider-color,
+  // )
+);
+
+// :root {
+//   --primary-color: #{$primary};
+//   --success-color: #{$success};
+//   --warning-color: #{$warning};
+//   --error-color: #{$error};
+//   --text-primary: #{$textPrimary};
+// }

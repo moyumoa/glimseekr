@@ -1,0 +1,87 @@
+:root.dark {
+  --header-height: 40px;
+  --bottom-height: 24px;
+  /* --side-width: 56px; */
+  --side-width: 252px;
+  --header-oper-bar-height: 48px;
+  --oper-panel-width: 375px;
+  /* 页面上部分操作区高度 */
+  --page-top-oper-height: 120px;
+  /* 操作区内元素高度 */
+  --oper-item-height: 44px;
+  /* 🌒 深色模式：页面整体背景色，尽量不要用纯黑，避免太死板 */
+  --bg-color: #121212;
+
+  /* 📦 卡片 / 弹窗 / 面板背景色，比主背景稍亮，制造分层感 */
+  --card-color: #1E1E1E;
+  --panel-color: rgba(34, 36, 38, 0.85);
+
+  --navbar-bg: #1c1e20;
+  --sidebar-bg: #181a1c;
+
+  --hover-bg: rgba(0, 0, 0, 0.1);
+  --active-bg: rgba(0, 0, 0, 0.15);
+
+  /* 柔和文字颜色 */
+  --text-soft: #9db8cd;
+
+  /* 📝 主文字颜色：高对比度，适合标题、主要内容 */
+  --text-primary: rgba(255, 255, 255, 0.87);
+
+  /* 📜 正常文字颜色：适合正文、次要内容 */
+  --text-regular: rgba(255, 255, 255, 0.72);
+
+  /* 📄 次级文字颜色：用于描述、时间、辅助信息等 */
+  --text-secondary: rgba(255, 255, 255, 0.54);
+
+  /* 🚫 禁用状态文字颜色：用于不可点击的按钮、输入框提示等 */
+  --text-disabled: rgba(255, 255, 255, 0.3);
+
+  /* ➖ 分割线 / 边框颜色：低调但可感知的边界 */
+  --divider-color: #333333;
+  --border-bottom-color: rgba(255, 255, 255, 0.1);
+
+  /* 🎨 品牌主色 / 按钮强调色：你可以根据项目风格修改这个 */
+  --primary-color: #6c7ac6;
+
+  /* ✅ 成功提示色（如上传成功） */
+  --success-color: #4CAF50;
+
+  /* ⚠️ 警告提示色（如操作风险） */
+  --warning-color: #FFC107;
+
+  /* ❌ 错误提示色（如删除确认） */
+  --error-color: #F44336;
+
+  --success-color-hover: rgba(76, 175, 80, 0.8);
+  --warning-color-hover: rgba(255, 193, 7, 0.1);
+  --error-color-hover: rgba(244, 67, 54, 0.1);
+  --primary-color-hover: rgba(110, 124, 193, 0.8);
+  --primary-color-active: rgba(110, 124, 193, 0.92);
+
+
+  --text-primary-hover: rgba(255, 255, 255, 0.87);
+  
+
+
+ /*  --el-fill-color-blank: var(--bg-color);
+  --el-color-primary: var(--primary-color);
+  --el-tag-bg-color: var(--card-color) !important;
+  --el-tag-border-color: var(--divider-color) !important;
+  --el-tag-text-color: var(--text-primary);
+  --el-tag-hover-bg-color: var(--primary-color);
+  --el-tag-hover-text-color: var(--text-primary); */
+
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-secondary: var(--text-secondary);
+  --el-text-color-disabled: var(--text-disabled);
+  --el-bg-color: var(--bg-color);
+  --el-bg-color-light: var(--card-color);
+  --el-text-color-regular: var(--text-regular);
+  --el-color-primary: var(--primary-color);
+  --el-color-success: var(--success-color);
+  --el-color-warning: var(--warning-color);
+  --el-color-danger: var(--error-color);
+  --el-color-primary-light-3: var(--primary-color-hover);
+  --el-color-primary-dark-2: var(--primary-color-active);
+}
