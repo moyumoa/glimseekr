@@ -6,8 +6,11 @@
     <div class="waterfall-inner" :style="innerStyle">
       <section v-for="item in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
         class="waterfall-item" :class="{ 'newly-inserted': item._justInserted }" :data-index="item.__index">
-        <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image" 
-          @load="onImageLoad(item._id, $event)" />
+        <div v-if="item._id" class="image-wrapper" :class="{ loaded: loadedMap[item._id] }"
+          :style="aspectRatioStyle(item)">
+          <img :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
+            :class="{ loaded: loadedMap[item._id] }" @load="onImageLoad(item._id, $event)" />
+        </div>
         <div v-else class="placeholder"></div>
 
         <!-- 插槽，允许外部传入 item-info 内容 -->
@@ -16,18 +19,17 @@
         </div>
       </section>
 
-      <div v-if="isLoading" class="loading-indicator">
-        <el-icon>
-          <Loading />
-        </el-icon>
-      </div>
-
-      <el-empty v-if="!isLoading && visibleItems.length === 0" description=" " style="margin-top: 20%" />
-
       <div v-if="canManuallyLoadMore" class="center-load-more">
-      <el-button text @click="loadMore">加载更多</el-button>
+        <el-button text @click="loadMore">加载更多</el-button>
+      </div>
     </div>
+    <div v-if="isLoading" class="loading-indicator">
+      <el-icon>
+        <Loading />
+      </el-icon>
     </div>
+    <div style="height: 16px;" />
+    <el-empty v-if="!isLoading && visibleItems.length === 0" description=" " style="margin-top: 20%" />
   </div>
 </template>
 
@@ -98,6 +100,7 @@ const throttledLayout = throttle(() => calculateItemPositions(), 100);
 // 动态获取 item-info 的高度
 const itemInfoHeights = ref([]); // 存储每个 item-info 高度的数组
 const imgRatiosRef = ref({});    // 存储图片比例
+const loadedMap = ref({}) // 记录图片是否加载完成
 
 // 布局更新标志位
 const isLayoutUpdating = ref(false);
@@ -155,7 +158,10 @@ const handleScroll = throttle(() => {
   const scrollPosition = scrollTop.value + viewportHeight.value;
   const containerHeightVal = containerEl.scrollHeight;
 
-  if (scrollPosition >= containerHeightVal - 100 && !isLoading.value) {
+  // console.log(`Scroll Position: ${scrollPosition}, Container Height: ${containerHeightVal}`);
+  // scrollPosition >= containerHeightVal - 100 && !isLoading.value
+
+  if (scrollPosition >= containerHeightVal - VIEWPORT_BUFFER && !isLoading.value) {
     fetchItems();
   }
   updateVisibleItems();
@@ -185,8 +191,7 @@ const updateColumnCount = () => {
     }
   }
   currentColumnCount.value = cols;
-  itemWidth.value =
-    (containerWidth.value - (cols - 1) * props.gap) / cols;
+  itemWidth.value = (containerWidth.value - (cols - 1) * props.gap) / cols;
 };
 
 const updateVisibleItems = () => {
@@ -268,6 +273,17 @@ const getItemStyle = (item) => ({
   willChange: 'transform',
 });
 
+// 为图片设置占位样式，防止加载过程高度塌陷
+const aspectRatioStyle = (item) => {
+  const ratio =
+    imgRatiosRef.value[item._id] ||
+    (item.originalHeight && item.originalWidth ? item.originalHeight / item.originalWidth : 1.5)
+  return {
+    height: `${itemWidth.value * ratio}px`,
+    width: '100%'
+  }
+}
+
 // 获取 item-info 的高度，并计算样式
 const setItemInfoHeight = (el, index) => {
   if (el) {
@@ -310,13 +326,21 @@ const reMeasureVisibleHeights = debounce(() => {
 }, 300)
 
 // 计算图片的比例
+// const onImageLoad = (id, e) => {
+//   const { naturalWidth, naturalHeight } = e.target;
+//   if (naturalWidth === 0) return;
+//   const ratio = naturalHeight / naturalWidth;
+//   imgRatiosRef.value[id] = ratio;
+//   calculateItemPositions();
+// };
 const onImageLoad = (id, e) => {
-  const { naturalWidth, naturalHeight } = e.target;
-  if (naturalWidth === 0) return;
-  const ratio = naturalHeight / naturalWidth;
-  imgRatiosRef.value[id] = ratio;
-  calculateItemPositions();
-};
+  const { naturalWidth, naturalHeight } = e.target
+  if (naturalWidth === 0) return
+  const ratio = naturalHeight / naturalWidth
+  imgRatiosRef.value[id] = ratio
+  loadedMap.value[id] = true
+  calculateItemPositions()
+}
 
 const insertItemToTop = async (newItem) => {
   const id = props.getItemId(newItem)
@@ -477,13 +501,38 @@ header {
   will-change: transform;
 }
 
+.image-wrapper {
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background-color: var(--card-color);
+  border: 1px solid var(--divider-color);
+  transition: filter 0.4s ease;
+  filter: blur(5px);
+}
+
+.image-wrapper.loaded {
+  filter: none;
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: var(--card-color);
+}
+
 .waterfall-image {
   width: 100%;
-  height: auto;
+  /* height: auto; */
+  height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: 16px;
-  border: 1px solid var(--divider-color);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.waterfall-image.loaded {
+  opacity: 1;
 }
 
 .item-info {
