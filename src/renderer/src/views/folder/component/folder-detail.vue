@@ -26,7 +26,7 @@
         <div>{{ query.folder }}</div>
         <div>{{ item.name }}</div>
         <div>{{ item.size }}</div>
-        <div>测试内容超长会如何测试内容超长会如何测试内容超长会如何测试内容超长会如何测试内容超长会如何测试内容超长会如何</div>
+        <div>{{ item._id }}</div>
       </div>
     </template>
   </virtual-waterfall-cursor>

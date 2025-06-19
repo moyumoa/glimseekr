@@ -11,7 +11,7 @@
         <div v-else class="placeholder"></div>
 
         <!-- 插槽，允许外部传入 item-info 内容 -->
-        <div class="item-info" :data-index="item.__index" :ref="el => setItemInfoHeight(el, item.__index)">
+        <div class="item-info" :data-index="item.__index" :ref="(el) => setItemInfoHeight(el, item.__index)">
           <slot name="extra" :item="item" :index="item.__index"></slot>
         </div>
       </section>
@@ -22,7 +22,7 @@
         </el-icon>
       </div>
 
-       <el-empty v-if="!isLoading && visibleItems.length === 0" description=" " style="margin-top: 20%" />
+      <el-empty v-if="!isLoading && visibleItems.length === 0" description=" " style="margin-top: 20%" />
     </div>
   </div>
 </template>
@@ -142,6 +142,7 @@ const handleScroll = () => {
     fetchItems();
   }
   updateVisibleItems();
+  reMeasureVisibleHeights();
 };
 
 // 计算每个项目的位置（top/left），根据列数进行布局
@@ -197,8 +198,7 @@ const calculateItemPositions = () => {
   if (containerHeight.value < 0) containerHeight.value = 0;
 
   nextTick(() => {
-    container.value.style.height =
-      containerHeight.value > 0 ? `${containerHeight.value}px` : '100%';
+    container.value.style.height = containerHeight.value > 0 ? `${containerHeight.value}px` : '100%';
   });
 
   updateVisibleItems();
@@ -246,6 +246,31 @@ const setItemInfoHeight = (el, index) => {
   }
 };
 
+const reMeasureVisibleHeights = debounce(() => {
+  nextTick(() => {
+    const els = container.value?.querySelectorAll('[data-index]')
+    let changed = false
+    els?.forEach((el) => {
+      const idx = Number(el.getAttribute('data-index'))
+      const infoEl = el.querySelector('.item-info')
+      if (!infoEl) return
+      const pos = itemPositions.value[idx]
+      if (!pos) return
+      if (
+        pos.top + pos.height >= scrollTop.value - VIEWPORT_BUFFER &&
+        pos.top <= scrollTop.value + viewportHeight.value + VIEWPORT_BUFFER
+      ) {
+        const h = infoEl.offsetHeight
+        if (h && h !== itemInfoHeights.value[idx]) {
+          itemInfoHeights.value[idx] = h
+          changed = true
+        }
+      }
+    })
+    if (changed) calculateItemPositions()
+  })
+}, 300)
+
 // 计算图片的比例
 const onImageLoad = (id, e) => {
   const { naturalWidth, naturalHeight } = e.target;
@@ -256,58 +281,100 @@ const onImageLoad = (id, e) => {
 };
 
 const insertItemToTop = async (newItem) => {
-  const id = props.getItemId(newItem);
-  newItem.originalWidth = newItem.width || DEFAULTWIDTH;
-  newItem.originalHeight = newItem.height || DEFAULTHEIGHT;
+  const id = props.getItemId(newItem)
+  newItem.originalWidth = newItem.width || DEFAULTWIDTH
+  newItem.originalHeight = newItem.height || DEFAULTHEIGHT
   newItem._justInserted = true
-  delete imgRatiosRef.value[id];
-  items.value.unshift(newItem);
-  itemInfoHeights.value.unshift(0);
-  await nextTick();
-  calculateItemPositions();
-  container.value?.scrollTo({ top: 0, behavior: 'smooth' });
+  delete imgRatiosRef.value[id]
+  items.value.unshift(newItem)
+  itemInfoHeights.value.unshift(0)
+  await nextTick()
+  reMeasureVisibleHeights()
+  calculateItemPositions()
+  setTimeout(() => {
+    newItem._justInserted = false
+  }, 400)
+  container.value?.scrollTo({ top: 0, behavior: 'smooth' })
 };
 
 const insertItemsToTop = async (newItems = []) => {
-  newItems.forEach(item => {
-    item.originalWidth = item.width || DEFAULTWIDTH;
-    item.originalHeight = item.height || DEFAULTHEIGHT;
-    delete imgRatiosRef.value[props.getItemId(item)];
-  });
-  items.value.unshift(...newItems);
-  itemInfoHeights.value.unshift(...new Array(newItems.length).fill(0));
-  await nextTick();
-  calculateItemPositions();
-  container.value?.scrollTo({ top: 0, behavior: 'smooth' });
-};
+  newItems.forEach((item) => {
+    item.originalWidth = item.width || DEFAULTWIDTH
+    item.originalHeight = item.height || DEFAULTHEIGHT
+    delete imgRatiosRef.value[props.getItemId(item)]
+    item._justInserted = true
+  })
+  items.value.unshift(...newItems)
+  itemInfoHeights.value.unshift(...new Array(newItems.length).fill(0))
+  await nextTick()
+  reMeasureVisibleHeights()
+  calculateItemPositions()
+  setTimeout(() => {
+    newItems.forEach((i) => (i._justInserted = false))
+  }, 400)
+  container.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
-const updateItem = async (id, data = {}) => {
-  const index = itemIndexMap.value[id];
-  if (index === undefined) return;
-  items.value[index] = { ...items.value[index], ...data };
-  await nextTick();
-  calculateItemPositions();
-};
+const updateItem = async (id, data = {}, mayAffectHeight = false) => {
+  const index = items.value.findIndex((i) => props.getItemId(i) === id)
+  if (index === -1) return
+  items.value[index] = { ...items.value[index], ...data }
+  if (mayAffectHeight) {
+    itemInfoHeights.value[index] = 0
+  }
+  await nextTick()
+  reMeasureVisibleHeights()
+  calculateItemPositions()
+}
 
 const updateItems = async (updates = []) => {
-  updates.forEach(({ id, data }) => {
-    const index = itemIndexMap.value[id];
+  let dirty = false
+  updates.forEach(({ id, data, mayAffectHeight }) => {
+    const index = itemIndexMap.value[id]
     if (index !== undefined) {
-      items.value[index] = { ...items.value[index], ...data };
+      items.value[index] = { ...items.value[index], ...data }
+      if (mayAffectHeight) {
+        itemInfoHeights.value[index] = 0
+        dirty = true
+      }
     }
-  });
-  await nextTick();
-  calculateItemPositions();
+  })
+  await nextTick()
+  if (dirty) reMeasureVisibleHeights()
+  calculateItemPositions()
 };
 
+
 const removeItem = (id) => {
-  const idx = itemIndexMap.value[id];
-  if (idx === undefined) return;
-  items.value.splice(idx, 1);
-  itemInfoHeights.value.splice(idx, 1);
-  delete imgRatiosRef.value[id];
-  calculateItemPositions();
-};
+  const idx = items.value.findIndex((i) => props.getItemId(i) === id)
+  if (idx === -1) return
+  items.value.splice(idx, 1)
+  itemInfoHeights.value.splice(idx, 1)
+  delete imgRatiosRef.value[id]
+  reMeasureVisibleHeights()
+  calculateItemPositions()
+}
+
+const removeItems = (ids = []) => {
+  const pairs = ids
+    .map((id) => ({
+      id,
+      index: items.value.findIndex((i) => props.getItemId(i) === id)
+    }))
+    .filter((p) => p.index !== -1)
+    .sort((a, b) => b.index - a.index)
+
+  pairs.forEach(({ id, index }) => {
+    items.value.splice(index, 1)
+    itemInfoHeights.value.splice(index, 1)
+    delete imgRatiosRef.value[id]
+  })
+
+  if (pairs.length) {
+    reMeasureVisibleHeights()
+    calculateItemPositions()
+  }
+}
 
 defineExpose({
   insertItemToTop,
@@ -315,6 +382,7 @@ defineExpose({
   updateItem,
   updateItems,
   removeItem,
+  removeItems
 });
 
 // 组件挂载时获取数据
