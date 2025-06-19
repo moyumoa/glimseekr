@@ -6,7 +6,7 @@
     <div class="waterfall-inner" :style="innerStyle">
       <section v-for="item in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
         class="waterfall-item" :class="{ 'newly-inserted': item._justInserted }" :data-index="item.__index">
-        <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image" 
+        <img v-if="item._id" :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
           @load="onImageLoad(item._id, $event)" />
         <div v-else class="placeholder"></div>
 
@@ -23,10 +23,6 @@
       </div>
 
       <el-empty v-if="!isLoading && visibleItems.length === 0" description=" " style="margin-top: 20%" />
-
-      <div v-if="canManuallyLoadMore" class="center-load-more">
-      <el-button text @click="loadMore">加载更多</el-button>
-    </div>
     </div>
   </div>
 </template>
@@ -79,21 +75,13 @@ const itemPositions = ref([]);
 const VIEWPORT_BUFFER = 1000;
 const itemIndexMap = ref({});
 
-const canManuallyLoadMore = computed(() => hasMore.value && !isLoading.value && containerHeight.value < viewportHeight.value)
-
-// 维护每列的高度，便于增量布局
-const columnHeights = ref([]);
-let lastColumnCount = 0;
-
-const rebuildIndexMap = () => {
+watch(items, () => {
   const map = {};
   items.value.forEach((item, index) => {
     map[props.getItemId(item)] = index;
   });
   itemIndexMap.value = map;
-};
-
-const throttledLayout = throttle(() => calculateItemPositions(), 100);
+});
 
 // 动态获取 item-info 的高度
 const itemInfoHeights = ref([]); // 存储每个 item-info 高度的数组
@@ -130,16 +118,11 @@ const fetchItems = async () => {
     });
 
     if (list.length < props.pageSize) hasMore.value = false;
-    const start = items.value.length;
     items.value = items.value.concat(list);
-    list.forEach((item, idx) => {
-      itemIndexMap.value[props.getItemId(item)] = start + idx;
-    });
     nextCursor.value = res?.next_cursor || null;
 
-    // 仅对新增部分计算位置
-    calculateItemPositions(true);
-
+    // 重新计算每个项目的位置
+    calculateItemPositions();
   } catch (error) {
     console.error('数据加载失败:', error);
   } finally {
@@ -148,7 +131,7 @@ const fetchItems = async () => {
 };
 
 // 滚动事件处理，加载更多数据
-const handleScroll = throttle(() => {
+const handleScroll = () => {
   const containerEl = container.value;
   scrollTop.value = containerEl.scrollTop;
   viewportHeight.value = containerEl.clientHeight;
@@ -160,13 +143,6 @@ const handleScroll = throttle(() => {
   }
   updateVisibleItems();
   reMeasureVisibleHeights();
-}, 200);
-
-// 手动触发加载更多数据
-const loadMore = () => {
-  if (canManuallyLoadMore.value) {
-    fetchItems();
-  }
 };
 
 // 计算每个项目的位置（top/left），根据列数进行布局
@@ -196,43 +172,29 @@ const updateVisibleItems = () => {
   );
 };
 
-const calculateItemPositions = (incremental = false) => {
+const calculateItemPositions = () => {
   if (isLayoutUpdating.value) return; // 防止死循环
   isLayoutUpdating.value = true;
 
-  updateColumnCount();
+  updateColumnCount(); // TODO 如果这里能加个防抖就更好了
 
-  if (!incremental || lastColumnCount !== currentColumnCount.value) {
-    columnHeights.value = Array(currentColumnCount.value).fill(0);
-    itemPositions.value = [];
-    incremental = false;
-  }
-  lastColumnCount = currentColumnCount.value;
+  const columnHeights = Array(currentColumnCount.value).fill(0);
 
-
-  const startIndex = incremental ? itemPositions.value.length : 0;
-
-  for (let i = startIndex; i < items.value.length; i++) {
-    const item = items.value[i];
+  itemPositions.value = items.value.map((item, index) => {
     const ratio = imgRatiosRef.value[item._id] || 1.5;
     const imgHeight = itemWidth.value * ratio;
-    const extraHeight = itemInfoHeights.value[i] || 0;
+    const extraHeight = itemInfoHeights.value[index] || 0;
     const height = imgHeight + extraHeight;
 
-    const columnIndex = columnHeights.value.indexOf(Math.min(...columnHeights.value));
+    const columnIndex = columnHeights.indexOf(Math.min(...columnHeights));
     const left = columnIndex * (itemWidth.value + props.gap);
-    const top = columnHeights.value[columnIndex];
-    columnHeights.value[columnIndex] += height + props.gap;
+    const top = columnHeights[columnIndex];
+    columnHeights[columnIndex] += height + props.gap;
 
-    const pos = { ...item, __index: i, left, top, height };
-    if (incremental) {
-      itemPositions.value.push(pos);
-    } else {
-      itemPositions.value[i] = pos;
-    }
-  }
+    return { ...item, __index: index, left, top, height };
+  });
 
-  containerHeight.value = Math.max(...columnHeights.value) - props.gap;
+  containerHeight.value = Math.max(...columnHeights) - props.gap;
   if (containerHeight.value < 0) containerHeight.value = 0;
 
   nextTick(() => {
@@ -344,7 +306,6 @@ const insertItemsToTop = async (newItems = []) => {
   })
   items.value.unshift(...newItems)
   itemInfoHeights.value.unshift(...new Array(newItems.length).fill(0))
-  rebuildIndexMap()
   await nextTick()
   reMeasureVisibleHeights()
   calculateItemPositions()
@@ -392,7 +353,6 @@ const removeItem = (id) => {
   delete imgRatiosRef.value[id]
   reMeasureVisibleHeights()
   calculateItemPositions()
-  rebuildIndexMap()
 }
 
 const removeItems = (ids = []) => {
@@ -413,7 +373,6 @@ const removeItems = (ids = []) => {
   if (pairs.length) {
     reMeasureVisibleHeights()
     calculateItemPositions()
-    rebuildIndexMap()
   }
 }
 
@@ -430,14 +389,14 @@ defineExpose({
 onMounted(() => {
   resizeObserver = new ResizeObserver(([entry]) => {
     containerWidth.value = entry.contentRect.width;
-    throttledLayout();
+    calculateItemPositions();
   });
   if (container.value) {
     resizeObserver.observe(container.value);
     containerWidth.value = container.value.clientWidth;
   }
   fetchItems();
-  throttledLayout();
+  updateVisibleItems();
 });
 
 onUnmounted(() => {

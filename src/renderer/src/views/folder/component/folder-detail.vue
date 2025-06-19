@@ -1,7 +1,7 @@
 <template>
   <virtual-waterfall-cursor ref="waterfallCursorRef" :fetchPage="$api.folderPic.list" :getItemId="(item) => item._id"
-    :getImageSrc="(item) => item.thumb_url" :params="{ folder_id: id }" :columnCount="{ 1080: 5, 860: 4, 560: 3 }"
-    :gap="16">
+    :getImageSrc="(item) => `${item.thumb_url}-thumb400.webp`" :params="{ folder_id: id }"
+    :columnCount="{ 1080: 5, 860: 4, 560: 3 }" :gap="16">
     <template #header>
       <div class="pageoperbar">
         <div class="pageoperbar-title" v-if="!upLoading">

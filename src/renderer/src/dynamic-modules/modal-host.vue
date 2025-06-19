@@ -108,6 +108,7 @@ onUnmounted(() => {
   // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   width: 100%;
   height: calc(100vh - var(--header-height) - 6em);
+  min-height: calc(100vh - var(--header-height) - 6em);
   max-height: calc(100vh - var(--header-height) - 6em);
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.44);
