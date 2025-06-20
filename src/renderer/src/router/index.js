@@ -18,6 +18,30 @@ export const dynamicLayoutRoute = {
         side: true
       }
     },
+    {
+      path: '/film-selection-delivery/:id?',
+      name: 'FilmSelectionDelivery',
+      component: () => import('@/views/deliver/film-selection-delivery.vue'),
+      meta: {
+        basePath: '/fast-delivery',
+        title: '选片交付',
+        icon: 'wenjianjiadakai',
+        size: 18,
+        side: true
+      }
+    },
+    {
+      path: '/fast-delivery/:id?',
+      name: 'FastDelivery',
+      component: () => import('@/views/deliver/fast-delivery.vue'),
+      meta: {
+        basePath: '/fast-delivery',
+        title: '快速交付',
+        icon: 'wenjianjiadakai',
+        size: 18,
+        side: true
+      }
+    },
     // {
     //   path: '/folder/detail/:id',
     //   name: 'FolderDetail',
