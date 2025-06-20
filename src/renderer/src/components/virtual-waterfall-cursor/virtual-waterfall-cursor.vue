@@ -6,8 +6,7 @@
     <div class="waterfall-inner" :style="innerStyle">
       <section v-for="item in visibleItems" :key="item[props.getItemId(item)]" :style="getItemStyle(item)"
         class="waterfall-item" :class="{ 'newly-inserted': item._justInserted }" :data-index="item.__index">
-        <div v-if="item._id" class="image-wrapper" :class="{ loaded: loadedMap[item._id] }"
-          :style="aspectRatioStyle(item)">
+        <div v-if="item._id" class="image-wrapper" :style="aspectRatioStyle(item)">
           <img :src="props.getImageSrc(item)" alt="item.title" class="waterfall-image"
             :class="{ loaded: loadedMap[item._id] }" @load="onImageLoad(item._id, $event)" />
         </div>
@@ -113,12 +112,11 @@ const fetchItems = async () => {
   if (!hasMore.value) return;
 
   isLoading.value = true;
-  const lastItem = nextCursor.value || items.value.at(-1);
+  const lastItem = nextCursor.value;
   const req = Object.assign({}, { limit: props.pageSize }, props.params, props.defaultParams);
-
   if (lastItem) {
-    req.clt = lastItem.create_time;
-    req.cli = lastItem[props.getItemId(lastItem)];
+    req.clt = lastItem.clt;
+    req.cli = lastItem.cli;
   }
 
   try {
@@ -138,7 +136,8 @@ const fetchItems = async () => {
     list.forEach((item, idx) => {
       itemIndexMap.value[props.getItemId(item)] = start + idx;
     });
-    nextCursor.value = res?.next_cursor || null;
+    const listLast = list[list.length - 1] || null;
+    nextCursor.value = res?.data?.next_cursor || listLast ? { clt: listLast.create_time, cli: listLast._id } : null;
 
     // 仅对新增部分计算位置
     calculateItemPositions(true);
@@ -447,7 +446,8 @@ defineExpose({
   updateItem,
   updateItems,
   removeItem,
-  removeItems
+  removeItems,
+  items,
 });
 
 // 组件挂载时获取数据
@@ -507,8 +507,8 @@ header {
   overflow: hidden;
   background-color: var(--card-color);
   border: 1px solid var(--divider-color);
-  transition: filter 0.4s ease;
-  filter: blur(5px);
+  /* transition: filter 0.4s ease; */
+  /* filter: blur(5px); */
 }
 
 .image-wrapper.loaded {
@@ -528,11 +528,13 @@ header {
   object-fit: cover;
   display: block;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  filter: blur(5px);
+  transition: filter 0.25s ease;
 }
 
 .waterfall-image.loaded {
   opacity: 1;
+  filter: blur(0);
 }
 
 .item-info {

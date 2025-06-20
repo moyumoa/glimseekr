@@ -1,20 +1,31 @@
 <template>
   <virtual-waterfall-cursor ref="waterfallCursorRef" :fetchPage="$api.folderPic.list" :getItemId="(item) => item._id"
-    :getImageSrc="(item) => `${item.thumb_url}-thumb400.webp`" :params="{ folder_id: id }"
-    :pageSize="30"
+    :getImageSrc="(item) => `${item.thumb_url}-thumb400.webp`" :params="{ folder_id: id }" :pageSize="30"
     :columnCount="{ 1080: 5, 860: 4, 560: 3 }" :gap="16">
     <template #header>
       <div class="pageoperbar">
         <div class="pageoperbar-title" v-if="!upLoading">
           <i-svg name="kejianyunpan" size="16" />
-          <span class="pageoperbar-title-text">{{ query.folder || '照片列表' }}</span>
+          <span class="pageoperbar-title-text">{{ query.folder || '照片列表'
+            }}</span>
         </div>
         <div class="uploading" v-else>
           <i-svg name="jiazai" size="16" class="uploading-icon" />
           <span class="uploading-text">正在上传中 ({{ $up.successCount.value }}/{{ $up.total.value }})</span>
           <span class="uploading-text-desc">请勿关闭窗口</span>
         </div>
+
+        <div class="pageoperbar-center">
+          <div class="pageoperbar-center-node" @click.stop="checkAllChange">
+            <div class="select-sele" :class="checkedClass" />
+            <span>{{ checkedCount }} / {{ totalCount }}</span>
+          </div>
+        </div>
+
         <div class="pageoperbar-inner">
+          <!-- <span class="uploading-text-desc">已选 张</span> -->
+          <!-- <span class="uploading-text-desc" v-if="$up.selectedCount.value > 0">总计 {{ formatBytes($up.selectedSize.value) }}</span> -->
+
           <div class="pageoperbar-inner-item" @click="upload(id)">
             <i-svg name="choseimage" size="14" />
             <span class="pageoperbar-inner-item-title">上传照片</span>
@@ -23,11 +34,11 @@
       </div>
     </template>
     <template #extra="{ item }">
-      <div @click.stop="extra(item)">
-        <div>{{ query.folder }}</div>
+      <div @click.stop="selectorItem(item)">
         <div>{{ item.name }}</div>
-        <div>{{ item.size }}</div>
-        <div>{{ item._id }}</div>
+        <div>{{ formatBytes(item.size) }}</div>
+        <div class="select-sele" :class="{ 'select-sele-active': !!checkedPics[item._id] }"
+          @click.stop="selectorItem(item)" />
       </div>
     </template>
   </virtual-waterfall-cursor>
@@ -90,6 +101,42 @@ const extra = (item) => {
   // send({ changeCover: item })
   waterfallCursorRef.value?.removeItem(item._id)
 }
+
+const checkedPics = ref({})
+const checkedCount = computed(() => Object.keys(checkedPics.value)?.length || 0)
+const totalCount = computed(() => waterfallCursorRef.value?.items.length || 0)
+
+const checkAllChange = () => {
+  const total = totalCount.value;
+  if (checkedCount.value === total) {
+    checkedPics.value = {};
+  } else {
+    checkedPics.value = deepClone(waterfallCursorRef.value?.items.reduce((acc, item) => {
+      acc[item._id] = 1;
+      return acc;
+    }, {}));
+  }
+}
+
+const checkedClass = computed(() => {
+  if (checkedCount.value === 0) {
+    return 'default-selected ';
+  } else if (checkedCount.value === totalCount.value) {
+    return 'select-sele-active';
+  } else {
+    return 'half-selected';
+  }
+});
+
+const selectorItem = (item) => {
+  const id = item._id;
+  if (checkedPics.value[id]) {
+    delete checkedPics.value[id];
+  } else {
+    checkedPics.value[id] = 1;
+  }
+}
+
 </script>
 
 <style lang="scss" scoped>
@@ -113,6 +160,8 @@ const extra = (item) => {
   box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.2);
 
   &-title {
+    flex: 1 0 auto;
+    width: 0;
     display: flex;
     align-items: center;
     font-size: 16px;
@@ -123,6 +172,9 @@ const extra = (item) => {
       margin-left: 8px;
       font-size: 14px;
       font-weight: 400;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     &-icon {
@@ -131,8 +183,28 @@ const extra = (item) => {
     }
   }
 
+  &-center {
+    flex: 1 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &-node {
+      display: flex;
+      align-items: center;
+      font-size: 15px;
+      color: var(--text-regular);
+      cursor: pointer;
+
+      &>span {
+        margin-left: 4px;
+      }
+    }
+  }
+
   &-inner {
-    flex: 1;
+    flex: 1 0 auto;
+    width: 0;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -140,6 +212,7 @@ const extra = (item) => {
     box-sizing: border-box;
 
     &-item {
+      flex-shrink: 0;
       height: calc(var(--oper-item-height) - 4px);
       border-radius: calc(var(--oper-item-height) - 4px);
       padding: 0 24px;
@@ -180,6 +253,7 @@ const extra = (item) => {
   color: var(--text-regular);
 
   &-icon {
+    flex-shrink: 0;
     font-size: 16px;
     margin-right: 8px;
     animation: loadingrotate 0.3s infinite linear;
@@ -219,6 +293,53 @@ const extra = (item) => {
       opacity: 0.4;
       font-size: 12px;
     }
+  }
+}
+
+.select-sele {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  margin-right: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  font-size: 12px;
+
+  &-active {
+    border-color: var(--text-soft);
+
+    &::before {
+      content: '';
+      width: 50%;
+      height: 50%;
+      border-radius: 50%;
+      background-color: var(--text-soft);
+      display: block;
+    }
+  }
+}
+
+.default-selected {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+}
+
+.half-selected {
+  border-color: var(--text-soft);
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+
+  &::before {
+    content: '';
+    width: 50%;
+    height: 2px;
+    background-color: var(--text-soft);
+    display: block;
   }
 }
 </style>

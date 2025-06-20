@@ -16,5 +16,5 @@ const iconComponent = icons[`/src/assets/svg/${name}.svg`]?.default;
 </script>
 
 <template>
-  <component :is="iconComponent" :style="{ width: size + 'px', height: size + 'px' }" />
+  <component :is="iconComponent" :style="{ width: size + 'px', height: size + 'px', flexShrink: 0 }" />
 </template>
