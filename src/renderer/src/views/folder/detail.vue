@@ -73,6 +73,9 @@ const $up = uploader({
 })
 const upLoading = computed(() => $up.loading.value)
 
+// 监听列队状态
+const upQueue = computed(() => $up.queue.value)
+
 const waterfallCursorRef = ref(null)
 
 const pendingItems = ref([])
@@ -93,6 +96,7 @@ const upload = () => {
       imgInfo.folder_id = imgInfo.folder
       // waterfallCursorRef.value?.insertItemToTop(imgInfo)
       pendingItems.value.push(imgInfo)
+      console.log('列队', upQueue.value)
       // ✨ 每上传几张立即插入一次
       if (pendingItems.value.length >= 5) {
         flushToTop()

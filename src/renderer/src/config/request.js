@@ -104,8 +104,18 @@ instance.interceptors.response.use(
     return data
   },
   (error) => {
+    const errorResponse = error.response || {}
+    const status = error.status || errorResponse.status || 500
+    if (status !== 200) {
+      ;({
+        401: () => notify.warning('登录已失效，请重新登录'),
+        403: () => notify.error('没有权限访问此资源'),
+        404: () => notify.error('请求的资源不存在'),
+        500: () => notify.error('服务器内部错误，请稍后再试')
+      }[status] || (() => notify.error('请求失败，请稍后再试'))
+      )?.()
+    }
     console.warn('请求异常', error)
-    notify.error(error.message || '服务器异常')
     return Promise.reject(error)
   }
 )

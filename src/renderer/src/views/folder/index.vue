@@ -1,5 +1,4 @@
 <template>
-  <!-- <FolderDetailModules v-if="paramsId && !showModalHook" :id="paramsId" :query="query" /> -->
 
   <virtual-waterfall v-show="!paramsId" ref="waterfallRef" :fetchPage="$api.space.list" :getItemId="item => item._id"
     :columnCount="{ 1920: 5, 1080: 4, 960: 3, 650: 2 }">
@@ -65,8 +64,6 @@
 
   <router-view v-if="paramsId" />
 
-  <!-- <subpage /> -->
-
 </template>
 <script setup>
 import { useRoute, useRouter } from 'vue-router'
@@ -75,7 +72,6 @@ const router = useRouter()
 const paramsId = computed(() => route.params.id)
 const query = computed(() => route.query)
 
-import FolderDetailModules from '@/views/folder/component/folder-detail.vue'
 
 import { formatBytes, deepClone } from '@mvmoo/us'
 import { $api } from '@/config/api.js'

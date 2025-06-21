@@ -12,6 +12,30 @@ let inputCreated = false
 const uploadQueue = []
 let processing = false
 let pendingParams = null
+// 队列状态列表，供外部查看，同时缓存最近 100 条
+const QUEUE_CACHE_KEY = 'imageUploadHistory'
+// 缓存条数
+const MAX_QUEUE_CACHE = 100
+
+function loadQueueCache() {
+  try {
+    const raw = localStorage.getItem(QUEUE_CACHE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch (err) {
+    console.error('[loadQueueCache]', err)
+    return []
+  }
+}
+
+function saveQueueCache(list) {
+  try {
+    localStorage.setItem(QUEUE_CACHE_KEY, JSON.stringify(list.slice(-MAX_QUEUE_CACHE)))
+  } catch (err) {
+    console.error('[saveQueueCache]', err)
+  }
+}
+
+const queueState = ref(loadQueueCache())
 
 export function useImageUploader(defaultOptions = {}) {
   const ident = ref('')
@@ -53,17 +77,21 @@ export function useImageUploader(defaultOptions = {}) {
     successCount.value = 0
     failCount.value = 0
     failedFiles.value = []
+    queueState.value = []
   }
 
   const handleUpload = async (files, params) => {
-    resetStatus()
-
     total.value = files.length
 
     const { onEachComplete, onComplete } = params
 
     for (const file of files) {
+      const item = queueState.value.find((q) => q.file === file)
       try {
+        const statusUpdater = (s) => {
+          if (item) item.status = s
+          saveQueueCache(queueState.value)
+        }
         const imageSize = await getImageSizeSafe(file)
 
         const result = await uploadToServer(
@@ -77,8 +105,15 @@ export function useImageUploader(defaultOptions = {}) {
             width: imageSize.width,
             height: imageSize.height,
             size_source: imageSize.source
-          }
+          },
+          statusUpdater
         )
+
+        if (item) {
+          item.status = 'done'
+          item.result = result
+          saveQueueCache(queueState.value)
+        }
 
         uploadedUrls.value.push(result)
         successCount.value++
@@ -87,12 +122,23 @@ export function useImageUploader(defaultOptions = {}) {
           onEachComplete(result)
         }
       } catch (err) {
+        if (item) {
+          item.status = 'error'
+          item.error = err
+          saveQueueCache(queueState.value)
+        }
+
         failCount.value++
         failedFiles.value.push(file)
         // ✅ 如果是空间已满，终止后续上传
         if (err?.errCode === 4003) {
           error.value = '空间已满，已终止上传'
           console.warn('[上传终止] 空间已满')
+          break
+        }
+
+        if (err?.code === 'ERR_NETWORK') {
+          error.value = '网络错误，请检查网络连接'
           break
         }
         console.error('[上传失败]', err)
@@ -124,6 +170,8 @@ export function useImageUploader(defaultOptions = {}) {
     }
     loading.value = false
     processing = false
+    saveQueueCache(queueState.value)
+    resetStatus()
   }
 
   const isValidImage = (file) => {
@@ -141,6 +189,11 @@ export function useImageUploader(defaultOptions = {}) {
     }
 
     if (!validFiles.length) return
+
+    validFiles.forEach((file) => {
+      queueState.value.push({ file, name: file.name, status: 'waiting' })
+    })
+    saveQueueCache(queueState.value)
 
     uploadQueue.push({ files: validFiles, params: pendingParams })
     pendingParams = null
@@ -173,9 +226,21 @@ export function useImageUploader(defaultOptions = {}) {
     Object.assign(defaultParams.value, opts)
   }
 
+  const getQueue = () => queueState.value
+
+  const getRecentQueue = () => queueState.value.slice(-MAX_QUEUE_CACHE)
+
+  const clearQueue = () => {
+    queueState.value = []
+    saveQueueCache(queueState.value)
+  }
+
   return {
     open,
     setDefaults,
+    getQueue,
+    getRecentQueue,
+    clearQueue,
     uploadedUrls,
     loading,
     error,
@@ -184,7 +249,8 @@ export function useImageUploader(defaultOptions = {}) {
     failCount,
     failedFiles,
     isCompleted,
-    ident
+    ident,
+    queue: queueState
   }
 }
 
@@ -238,7 +304,7 @@ const mimeToExt = {
   'image/svg+xml': 'svg'
 }
 
-async function uploadToServer(file, { bucket, updateBucket }, params = {}) {
+async function uploadToServer(file, { bucket, updateBucket }, params = {}, statusCb = () => {}) {
   const {
     apiFn = $api.space.picstorage,
     compressOptions = {},
@@ -255,6 +321,7 @@ async function uploadToServer(file, { bucket, updateBucket }, params = {}) {
 
   let compressedFile = null
   if (uploadThumb || (!uploadOriginal && urlSource === 'thumb')) {
+    statusCb('compressing')
     compressedFile = await new Promise((resolve, reject) => {
       new Compressor(file, {
         quality: 0.8,
@@ -268,11 +335,13 @@ async function uploadToServer(file, { bucket, updateBucket }, params = {}) {
 
   let originalRes = null
   if (uploadOriginal) {
+    statusCb('uploading')
     originalRes = await uploadToQiniu(file, originalKey, uploadToken.value)
   }
 
   let thumbRes = null
   if (uploadThumb) {
+    statusCb('uploading')
     const upFile = compressedFile || file
     thumbRes = await uploadToQiniu(upFile, thumbKey, uploadToken.value)
   }
@@ -310,6 +379,31 @@ async function uploadToServer(file, { bucket, updateBucket }, params = {}) {
   }
 
   if (result.errCode !== 0) throw new Error('图片入库失败')
-
+  statusCb('done')
   return result?.data || {}
 }
+
+/* 
+
+查看队列状态
+
+queue（或 getQueue()）返回完整队列，可实时查看每个任务的 status、result、error 等信息。
+
+getRecentQueue() 返回最近 100 条上传记录。
+
+clearQueue() 可手动清空队列。
+
+队列信息会自动存储到 localStorage，页面刷新后仍可获取最近 100 条记录，键名为 imageUploadHistory
+
+状态说明：
+
+waiting：已加入队列，等待上传
+
+compressing：正在压缩（若需要生成缩略图）
+
+uploading：正在上传到服务器
+
+done：上传成功
+
+error：上传失败
+*/

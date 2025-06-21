@@ -1,16 +1,20 @@
 <template>
   <div class="bottom-status-bar" @click="navito">
-    <div class="bsb-left" :style="upLoading ? animationStyle : defaultStyle">
-      <i-svg name="chuanshuliebiao" size="16" />
-      <span class="bsb-left-t" :class="{ 'upt-uploading': upLoading }">{{ upLoading ? upStatusText : '暂无上传任务' }}</span>
+    <div class="bsb-item" :style="upLoading ? animationStyle : defaultStyle">
+      <i-svg name="chuanshuliebiao" :class="{ 'upt-uploading': upLoading }" size="16" />
+      <span class="bsb-item-t" :class="{ 'upt-uploading': upLoading }">{{ upLoading ? upStatusText : '暂无上传任务' }}</span>
     </div>
 
-    <div class="bsb-left">
-      <div class="bsb-left-space" @click="openModalHook('space', null, { title: '空间使用情况' })">
+    <div class="bsb-item">
+      <div class="bsb-item-space" @click="openModalHook('space', null, { title: '空间使用情况' })">
+
         <i-svg name="wangpanjihuo" size="16" />
-        <span class="bsb-left-space-t">空间用量 {{ spaceInfo.usedDisplay }} / {{ spaceInfo.totalDisplay }}</span>
+        <span class="bsb-item-space-t">空间用量 {{ spaceInfo.usedDisplay }} / {{ spaceInfo.totalDisplay }}</span>
       </div>
     </div>
+
+    <el-progress :percentage="Number(spaceInfo.percent)" :stroke-width="6" :color="colors" :show-text="false" :striped="upLoading" :striped-flow="upLoading" />
+
   </div>
 </template>
 
@@ -19,6 +23,13 @@ const { data: infos } = useStoreData('uspace')
 const spaceInfo = computed(() => {
   return calcStorageStats(infos.value.total_storage_limit, infos.value.used_storage)
 })
+const colors = [
+  { color: '#67c23a', percentage: 10 },   // 绿色：健康
+  { color: '#91cb74', percentage: 30 },   // 介于绿和黄之间
+  { color: '#e6a23c', percentage: 50 },   // 橙黄：需注意
+  { color: '#f39c12', percentage: 70 },   // 深橙：高风险
+  { color: '#d60000', percentage: 100 },  // 红色：已用尽
+]
 
 import { useModal } from '@/hooks'
 const { openModal: openModalHook, show: showModalHook } = useModal({ mode: 'popup' })
@@ -27,12 +38,11 @@ const { openModal: openModalHook, show: showModalHook } = useModal({ mode: 'popu
 import { uploader } from '@/hooks'
 const $up = uploader()
 
-const upLoading = computed(() => {
-  return $up.loading.value
-})
+const upLoading = computed(() => $up.loading.value)
+const upQueue = computed(() => $up.queue.value.length)
 
 const upStatusText = computed(() => {
-  return `正在上传 (${$up.successCount.value}/${$up.total.value})`
+  return `正在上传 (${$up.successCount.value}/${$up.queue.value.length})`
 })
 
 const animationStyle = ref({
@@ -61,6 +71,10 @@ const router = useRouter()
 const navito = () => {
 }
 
+onUnmounted(() => {
+  $up.clearQueue()
+})
+
 </script>
 
 <style lang="scss">
@@ -71,7 +85,7 @@ const navito = () => {
   bottom: 36px;
   z-index: 1;
 
-  // width: 100%;
+  width: calc(100% - 16px);
   border-radius: 12px;
   background-color: rgba(30, 30, 30, 0.5);
   display: flex;
@@ -82,13 +96,10 @@ const navito = () => {
   letter-spacing: 0.5px; // 🩶 更宽松的字间距
   padding: 12px;
   box-sizing: border-box;
-  opacity: 0.9;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.bsb-left {
+.bsb-item {
   display: flex;
   align-items: center;
   color: var(--text-secondary);
@@ -115,56 +126,6 @@ const navito = () => {
   }
 }
 
-.bsb-center {
-  flex-shrink: 0;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.bsb-right {
-  flex: 1;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  cursor: pointer;
-  height: 100%;
-
-  &-icon {
-    margin-left: 12px;
-    color: var(--text-primary);
-    opacity: 0.8;
-    transition: color 0.2s ease-in-out;
-
-    &:hover {
-      color: var(--text-primary);
-      opacity: 1;
-    }
-  }
-
-  .manager-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 100%;
-    border-radius: 0;
-    background-color: var(--primary-color);
-    margin: 0 -12px 0 12px;
-    box-sizing: border-box;
-    cursor: pointer;
-    color: rgba(245, 245, 245, 1);
-    font-size: 15px;
-    font-weight: 600;
-    transition: all 0.1s;
-
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.2);
-      color: #fff;
-    }
-  }
-}
 
 .upt {
   &-uploading {

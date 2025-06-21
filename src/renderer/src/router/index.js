@@ -124,16 +124,7 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes,
-  scrollBehavior(to, from, savedPosition) {
-    // console.log('scrollBehavior', to, from, savedPosition)
-    // 如果返回列表页，恢复滚动位置
-    if (savedPosition) {
-      return savedPosition
-    }
-    // 默认情况下，返回顶部
-    return { top: 0 }
-  }
+  routes
 })
 
 // 白名单路由（无需登录）

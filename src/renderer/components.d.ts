@@ -22,6 +22,7 @@ declare module 'vue' {
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElImage: typeof import('element-plus/es')['ElImage']
     ElInput: typeof import('element-plus/es')['ElInput']
+    ElProgress: typeof import('element-plus/es')['ElProgress']
     ElSpace: typeof import('element-plus/es')['ElSpace']
     ElTag: typeof import('element-plus/es')['ElTag']
     FlipCard: typeof import('./src/components/flip-card/flip-card.vue')['default']
