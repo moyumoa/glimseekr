@@ -12,7 +12,7 @@
           </div>
           <i-svg name="kejianyunpan" size="16" />
           <span class="pageoperbar-title-text">{{ title || '照片列表'
-          }}</span>
+            }}</span>
         </div>
         <div class="uploading" v-else>
           <i-svg name="jiazai" size="16" class="uploading-icon" />
@@ -25,7 +25,7 @@
             <div class="select-sele" :class="checkedClass" />
             <span class="pageoperbar-center-node-text">已选</span>
             <span>{{ checkedCount }}</span>
-            <span class="pageoperbar-center-node-text">张 {{totalCount}}</span>
+            <span class="pageoperbar-center-node-text">张 {{ totalCount }}</span>
           </div>
         </div>
 
@@ -72,10 +72,8 @@ const waterfallCursorRef = ref(null)
 const pendingItems = ref([])
 
 const flushToTop = () => {
-  if (pendingItems.value.length > 5) {
-    waterfallCursorRef.value?.insertItemsToTop([...pendingItems.value])
-    pendingItems.value = []
-  }
+  waterfallCursorRef.value?.insertItemsToTop([...pendingItems.value])
+  pendingItems.value = []
 }
 
 const flushDebounced = debounce(flushToTop, 400)
@@ -91,11 +89,10 @@ const upload = () => {
       // waterfallCursorRef.value?.insertItemToTop(imgInfo)
       pendingItems.value.push(imgInfo)
 
+      console.log(`已上传 张`, pendingItems.value.length)
       // ✨ 每上传几张立即插入一次
-      if (pendingItems.value.length >= 3) {
+      if (pendingItems.value.length >= 5) {
         flushToTop()
-      } else {
-        flushDebounced()
       }
     },
     onComplete: ({ total, successCount, failCount, failedFiles }) => {
