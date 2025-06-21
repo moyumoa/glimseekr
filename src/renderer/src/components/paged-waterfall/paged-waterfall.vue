@@ -109,7 +109,6 @@ let resizeObserver;
 // 获取数据的函数，使用游标分页
 const fetchItems = async () => {
   if (!hasMore.value) return;
-  console.log('Fetching items...', items.value.at(-1));
   isLoading.value = true;
   const lastItem = nextCursor.value || (items.value.length > 0 ? items.value.at(-1) : null);
   const req = Object.assign({}, { limit: props.pageSize }, props.params, props.defaultParams);
@@ -157,7 +156,11 @@ const handleScroll = throttle(() => {
   // console.log(`Scroll Position: ${scrollPosition}, Container Height: ${containerHeightVal}`);
   // scrollPosition >= containerHeightVal - 100 && !isLoading.value
 
-  if (scrollPosition >= containerHeightVal - VIEWPORT_BUFFER && !isLoading.value) {
+  if (
+    scrollPosition >= containerHeightVal - VIEWPORT_BUFFER &&
+    !isLoading.value &&
+    !isLayoutUpdating.value
+  ) {
     fetchItems();
   }
   reMeasureVisibleHeights();
@@ -190,7 +193,7 @@ const updateColumnCount = () => {
 };
 
 
-const calculateItemPositions = (incremental = false) => {
+const calculateItemPositions = async (incremental = false) => {
   if (isLayoutUpdating.value) return; // 防止死循环
   isLayoutUpdating.value = true;
 
@@ -208,7 +211,11 @@ const calculateItemPositions = (incremental = false) => {
 
   for (let i = startIndex; i < items.value.length; i++) {
     const item = items.value[i];
-    const ratio = imgRatiosRef.value[item._id] || 1.5;
+    const ratio =
+      imgRatiosRef.value[item._id] ||
+      (item.originalHeight && item.originalWidth
+        ? item.originalHeight / item.originalWidth
+        : 1.5);
     const imgHeight = itemWidth.value * ratio;
     const extraHeight = itemInfoHeights.value[i] || 0;
     const height = imgHeight + extraHeight;
@@ -229,6 +236,8 @@ const calculateItemPositions = (incremental = false) => {
   containerHeight.value = Math.max(...columnHeights.value) - props.gap;
   if (containerHeight.value < 0) containerHeight.value = 0;
 
+  await nextTick();
+  
   isLayoutUpdating.value = false;
 };
 
