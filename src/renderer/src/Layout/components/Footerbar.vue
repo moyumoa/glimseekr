@@ -6,7 +6,7 @@
     </div>
 
     <div class="bsb-left">
-      <div class="bsb-left-space">
+      <div class="bsb-left-space" @click="openModalHook('space', null, { title: '空间使用情况' })">
         <i-svg name="wangpanjihuo" size="16" />
         <span class="bsb-left-space-t">空间用量 {{ spaceInfo.usedDisplay }} / {{ spaceInfo.totalDisplay }}</span>
       </div>
@@ -19,6 +19,10 @@ const { data: infos } = useStoreData('uspace')
 const spaceInfo = computed(() => {
   return calcStorageStats(infos.value.total_storage_limit, infos.value.used_storage)
 })
+
+import { useModal } from '@/hooks'
+const { openModal: openModalHook, show: showModalHook } = useModal({ mode: 'popup' })
+
 
 import { uploader } from '@/hooks'
 const $up = uploader()
@@ -52,19 +56,9 @@ const defaultStyle = ref({
   'margin-top': '2px'
 })
 
-
-const { clear: clearUser } = useStoreData('user')
-const { clear: clearUserSpace } = useStoreData('uspace')
 import { useRouter } from 'vue-router'
 const router = useRouter()
 const navito = () => {
-  // 临时在这里写一下退出登录逻辑
-  // 1. 清除用户信息
-  clearUser()
-  clearUserSpace()
-  localStorage.removeItem('mtttoken')
-  // 2. 跳转到登录页
-  router.push('/login')
 }
 
 </script>

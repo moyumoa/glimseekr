@@ -5,16 +5,11 @@
     <template #header>
       <div class="pageoperbar">
 
-        <div class="pageoperbar-center">
-          <div class="pageoperbar-center-node" @click.stop="checkAllChange">
-            <div class="select-sele" :class="checkedClass" />
-            <span class="pageoperbar-center-node-text">批量删除</span>
-            <span>{{ checkedCount }}</span>
-            <span class="pageoperbar-center-node-text">张</span>
-          </div>
-        </div>
-
         <div class="pageoperbar-title" v-if="!upLoading">
+          <div class="backbox" @click="closeSubPage()">
+            <i-svg name="ah5taocan" class="backbox-icon" size="16" />
+            <span class="backbox-text">返回</span>
+          </div>
           <i-svg name="kejianyunpan" size="16" />
           <span class="pageoperbar-title-text">{{ title || '照片列表'
           }}</span>
@@ -25,7 +20,14 @@
           <span class="uploading-text-desc">请勿关闭窗口</span>
         </div>
 
-
+        <div class="pageoperbar-center">
+          <div class="pageoperbar-center-node" @click.stop="checkAllChange">
+            <div class="select-sele" :class="checkedClass" />
+            <span class="pageoperbar-center-node-text">已选</span>
+            <span>{{ checkedCount }}</span>
+            <span class="pageoperbar-center-node-text">张</span>
+          </div>
+        </div>
 
         <div class="pageoperbar-inner">
           <!-- <span class="uploading-text-desc">已选 张</span> -->
@@ -39,17 +41,24 @@
       </div>
     </template>
     <template #extra="{ item }">
-      <div @click.stop="selectorItem(item)">
-        <div>{{ item.name }}</div>
-        <div>{{ formatBytes(item.size) }}</div>
-        <div class="select-sele" :class="{ 'select-sele-active': !!checkedPics[item._id] }"
-          @click.stop="selectorItem(item)" />
+      <div class="extrabox" @click.stop="selectorItem(item)">
+        <div class="extrabox-left">
+          <div class="extrabox-left-title">{{ item.name }}</div>
+          <div class="extrabox-left-desc">{{ formatBytes(item.size) }} </div>
+        </div>
+        <div class="extrabox-right">
+          <div class="select-sele" :class="{ 'select-sele-active': !!checkedPics[item._id] }"
+            @click.stop="selectorItem(item)" />
+        </div>
       </div>
     </template>
   </paged-waterfall>
 </template>
 
 <script setup>
+import { useModal, useSubPage } from '@/hooks'
+const { closeSubPage } = useSubPage()
+
 import { formatBytes, deepClone, debounce } from '@mvmoo/us'
 
 import { $api } from '@/config/api.js'
@@ -145,6 +154,43 @@ const selectorItem = (item) => {
 </script>
 
 <style lang="scss" scoped>
+.backbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text-primary);
+  padding-right: 12px;
+  margin-right: 12px;
+  position: relative;
+
+  // 在结尾(右边)加一条分割线
+  &::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 80%;
+    background-color: var(--border-bottom-color);
+  }
+
+  &:hover {
+    color: var(--text-soft);
+  }
+
+  &-icon {
+    transform: rotate(180deg);
+    line-height: 0;
+    margin-right: 5px;
+  }
+
+  &-text {
+    font-size: 14px;
+  }
+}
+
 .pageoperbar {
   margin-bottom: 12px;
   padding: 8px 16px;
@@ -155,20 +201,20 @@ const selectorItem = (item) => {
   // background: linear-gradient(to bottom, rgba(210, 15, 15, 0) 0%, rgba(0, 0, 0, 0.1) 100%);
 
   // 毛玻璃背景
-  // backdrop-filter: blur(16px);
-  // -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(64px);
+  -webkit-backdrop-filter: blur(64px);
   // background-color: rgba(18, 18, 18, 1);
   // background-color: #303133;
-  background-color: #2c2e32;
+  // background-color: #2c2e32;
 
   // 在底部加阴影
   box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.2);
 
   &-title {
     flex: 1 0 auto;
+    width: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
     font-size: 16px;
     color: var(--text-primary);
     font-weight: 500;
@@ -196,6 +242,7 @@ const selectorItem = (item) => {
     width: 0;
     display: flex;
     align-items: center;
+    justify-content: center;
     box-sizing: border-box;
 
     &-node {
@@ -240,7 +287,8 @@ const selectorItem = (item) => {
       align-items: center;
       cursor: pointer;
       color: var(--text-soft);
-      background-color: var(--bg-color);
+      // background-color: var(--bg-color);
+      background-color: #1c1c1c;
       transition: all 100ms ease-out;
 
       &:last-child {
@@ -320,12 +368,63 @@ const selectorItem = (item) => {
   }
 }
 
+.extrabox {
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 8px 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  color: var(--text-regular);
+
+  &-left {
+    flex: 1 0 auto;
+    width: 0;
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+
+    &-title {
+      margin-bottom: 4px;
+      word-break: break-all;
+      // 最多显示两行
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      /* 限制为两行 */
+      -webkit-box-orient: vertical;
+      /* 必须设置 */
+    }
+
+    &-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+  }
+
+  &-right {
+    flex-shrink: 0;
+    margin-left: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    cursor: pointer;
+  }
+}
+
 .select-sele {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   border: 2px solid #ddd;
-  margin-right: 4px;
   display: flex;
   justify-content: center;
   align-items: center;

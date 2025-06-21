@@ -11,7 +11,6 @@ export const dynamicLayoutRoute = {
       name: 'Folder',
       component: () => import('@/views/folder/index.vue'),
       meta: {
-        basePath: '/folder',
         title: '云储空间',
         icon: 'wenjianjiadakai',
         size: 18,
@@ -33,11 +32,10 @@ export const dynamicLayoutRoute = {
       ]
     },
     {
-      path: '/film-selection-delivery/:id?',
+      path: 'film-selection-delivery/:id?',
       name: 'FilmSelectionDelivery',
       component: () => import('@/views/deliver/film-selection-delivery.vue'),
       meta: {
-        basePath: '/fast-delivery',
         title: '选片交付',
         icon: 'wenjianjiadakai',
         size: 18,
@@ -45,11 +43,10 @@ export const dynamicLayoutRoute = {
       }
     },
     {
-      path: '/fast-delivery/:id?',
+      path: 'fast-delivery/:id?',
       name: 'FastDelivery',
       component: () => import('@/views/deliver/fast-delivery.vue'),
       meta: {
-        basePath: '/fast-delivery',
         title: '快速交付',
         icon: 'wenjianjiadakai',
         size: 18,
@@ -57,10 +54,9 @@ export const dynamicLayoutRoute = {
       }
     },
     {
-      path: '/customer',
+      path: 'customer',
       name: 'Customer',
       meta: {
-        basePath: '/customer',
         title: '客户资料',
         icon: 'kehuziliao',
         size: 18,
@@ -69,10 +65,9 @@ export const dynamicLayoutRoute = {
       component: () => import('@/views/customer/index.vue')
     },
     {
-      path: '/client-photo',
+      path: 'client-photo',
       name: 'ClientPhoto',
       meta: {
-        basePath: '/client-photo',
         title: '选片管理',
         icon: 'suoyouchangjing',
         size: 18,
@@ -81,10 +76,9 @@ export const dynamicLayoutRoute = {
       component: () => import('@/views/client-photo/index.vue')
     },
     {
-      path: '/portfolio',
+      path: 'portfolio',
       name: 'Portfolio',
       meta: {
-        basePath: '/portfolio',
         title: '作品集',
         icon: 'zhaopianqiang',
         size: 21,
@@ -93,15 +87,15 @@ export const dynamicLayoutRoute = {
       component: () => import('@/views/portfolio/index.vue')
     },
     {
-      path: '/settings',
+      path: 'settings',
       name: 'Settings',
-      meta: { basePath: '/settings', title: '更多功能', icon: 'gengduo', size: 18, side: true },
+      meta: { title: '更多功能', icon: 'gengduo', size: 18, side: true },
       component: () => import('@/views/settings/index.vue')
     },
     {
-      path: '/personal',
+      path: 'personal',
       name: 'Personal',
-      meta: { basePath: '/personal', title: '我的', icon: 'wode', size: 18, side: true },
+      meta: { title: '我的', icon: 'wode', size: 18, side: false },
       component: () => import('@/views/personal/index.vue')
     }
 

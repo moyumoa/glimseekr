@@ -20,7 +20,8 @@
       <flip-card lockHeightOnFlip :ref="el => el && flipCardMap.set(item._id, el)">
         <template #front="{ flip }">
           <!-- @click="openModalHook('folder', item._id, { folder: item.name })" -->
-          <div class="vw-crad" @click="openSubPage(`/folder/details/${item._id}`, { from: 'list', preview: '1' })">
+           <!--  -->
+          <div class="vw-crad" @click="openSubPage(`/folder/details/${item._id}/${item.name}`)">
             <img v-if="item.cover" :src="`${item.cover}-thumb400.webp`" alt="" class="vw-crad-img" />
             <!--  :class="{'vw-crad-body-center': !item.cover}" -->
             <div class="vw-crad-body">

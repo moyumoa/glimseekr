@@ -16,6 +16,7 @@ const { modalKey, modalId, query, show, closeModal } = useModal()
 
 const modalMap = {
   folder: () => import('@/views/folder/component/folder-detail.vue'),
+  space: () => import('@/views/user/index.vue'),
 }
 
 const currentComponent = computed(() => {
@@ -25,25 +26,13 @@ const currentComponent = computed(() => {
 
 /* 锁定页面 */
 const lockedPage = () => {
-  // 获取 section[data-masonry] 元素
-  const sectionElement = document.querySelector('section[data-masonry]') || document.querySelector('.virtual-waterfall-container')
   document.body.style.overflow = 'hidden' // 禁止页面滚动
-  if (sectionElement) {
-    sectionElement.style.display = 'none'  // 隐藏瀑布流布局
-    sectionElement.style.pointerEvents = 'none' // 禁止鼠标事件穿透
-  }
 }
 
 /* 解锁页面 */
 const unlockedPage = () => {
   // 恢复页面滚动
   document.body.style.overflow = ''
-  // 显示瀑布流布局
-  const sectionElement = document.querySelector('section[data-masonry]') || document.querySelector('.virtual-waterfall-container')
-  if (sectionElement) {
-    sectionElement.style.display = ''  // 恢复瀑布流布局显示
-    sectionElement.style.pointerEvents = '' // 恢复鼠标事件穿透
-  }
 }
 
 watch(show, (val) => {
@@ -56,20 +45,11 @@ watch(show, (val) => {
 
 onMounted(() => {
   nextTick(() => {
-    const checkAndUpdate = () => {
-      const sectionElement = document.querySelector('section[data-masonry]') || document.querySelector('.virtual-waterfall-container')
-      if (sectionElement) {
-        // 根据show状态来控制页面样式
-        if (show.value) {
-          lockedPage()
-        } else {
-          unlockedPage()
-        }
-      } else {
-        setTimeout(checkAndUpdate, 100) // 如果没有找到，稍等再试
-      }
+    if (show.value) {
+      lockedPage()
+    } else {
+      unlockedPage()
     }
-    checkAndUpdate()
   })
 
 })
@@ -116,6 +96,6 @@ onUnmounted(() => {
     0 4px 24px rgba(0, 0, 0, 0.2);
   // will-change: transform;
   overflow: visible;
-  will-change: unset; 
+  will-change: unset;
 }
 </style>

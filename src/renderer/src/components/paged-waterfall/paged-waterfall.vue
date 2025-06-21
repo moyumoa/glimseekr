@@ -1,5 +1,5 @@
 <template>
-  <div ref="container" class="waterfall-container" :style="containerStyle" @scroll.passive="handleScroll">
+  <div ref="container" class="waterfall-container" @scroll.passive="handleScroll">
     <header>
       <slot name="header" />
     </header>
@@ -231,21 +231,10 @@ const calculateItemPositions = (incremental = false) => {
   containerHeight.value = Math.max(...columnHeights.value) - props.gap;
   if (containerHeight.value < 0) containerHeight.value = 0;
 
-  nextTick(() => {
-    container.value.style.height = containerHeight.value > 0 ? `${containerHeight.value}px` : '100%';
-  });
-
   isLayoutUpdating.value = false;
 };
 
 // 计算容器样式
-const containerStyle = computed(() => ({
-  position: 'relative',
-  width: '100%',
-  overflowY: 'auto',
-  height: containerHeight.value > 0 ? `${containerHeight.value}px` : '100%',
-}));
-
 const innerStyle = computed(() => ({
   position: 'relative',
   height: containerHeight.value + 'px',
@@ -498,6 +487,7 @@ header {
   overflow: hidden;
   background-color: var(--card-color);
   border: 1px solid var(--divider-color);
+  box-sizing: border-box;
   /* transition: filter 0.4s ease; */
   /* filter: blur(5px); */
 }
@@ -529,9 +519,6 @@ header {
 }
 
 .item-info {
-  padding: 5px;
-  box-sizing: border-box;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   /* 超出换行 */
   word-break: break-all;
   font-size: 14px;

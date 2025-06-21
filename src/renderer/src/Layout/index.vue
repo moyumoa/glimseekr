@@ -7,7 +7,7 @@
         <Sidebar />
         <div class="layout-main">
           <router-view />
-           <!-- <router-view v-slot="{ Component }">
+          <!-- <router-view v-slot="{ Component }">
             <keep-alive>
               <component :is="Component" />
             </keep-alive>
@@ -24,10 +24,10 @@ import Headerbar from './components/Headerbar.vue'
 import Sidebar from './components/Sidebar.vue'
 
 const isElectron = computed(() => {
-	// return navigator.userAgent.toLowerCase().includes('electron');
-	const platform = window.myElectron?.platform
-	// 判断是在哪个平台上运行
-	return platform === 'win32' || platform === 'linux' || platform === 'darwin' ? platform : 'web'
+  // return navigator.userAgent.toLowerCase().includes('electron');
+  const platform = window.myElectron?.platform
+  // 判断是在哪个平台上运行
+  return platform === 'win32' || platform === 'linux' || platform === 'darwin' ? platform : 'web'
 })
 
 // 判断是否登录
@@ -63,11 +63,14 @@ if (userInfo.value?._id && mtttoken) {
     }
 
     .layout-main {
-      height: calc(100vh - var(--header-height) - 10em);
-      max-height: calc(100vh - var(--header-height) - 10em);
-      min-height: calc(100vh - var(--header-height) - 10em);
-      overflow: visible;
+      height: calc(100vh - var(--header-height) - 2em);
+      max-height: calc(100vh - var(--header-height) - 2em);
+      min-height: calc(100vh - var(--header-height) - 2em);
+      margin-top: 1em;
       box-sizing: border-box;
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
       width: 0;
       flex: 1 0 auto;
       // overflow-x: hidden;

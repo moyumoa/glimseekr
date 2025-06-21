@@ -6,21 +6,21 @@
 				<i-svg :name="item.icon" :size="item.size" />
 				<span class="sidebar-item-title">{{ item.title }}</span>
 			</div>
+			<div class="sidebar-item" :class="{ actived: route.path.startsWith('/personal') }"
+				@click="navito({ path: '/personal' })">
+				<i-svg name="gerenzhongxin" :size="20" />
+				<span class="sidebar-item-title">{{ userInfo?.nickname || '我的' }}</span>
+			</div>
 		</div>
 		<Footerbar />
 	</div>
 </template>
 
 <script setup>
-import Footerbar from '@/Layout/components/Footerbar.vue'
-const isElectron = computed(() => {
-	// return navigator.userAgent.toLowerCase().includes('electron');
-	const platform = window.myElectron?.platform
-	// 判断是在哪个平台上运行
-	return platform === 'win32' || platform === 'linux' || platform === 'darwin' ? platform : 'web'
-})
+const { data: userInfo } = useStoreData('user')
 
-const { set: setCpage, data: cpageData } = useStoreData('cpage')
+import Footerbar from '@/Layout/components/Footerbar.vue'
+
 import { dynamicLayoutRoute } from '@/router'
 const sidebars = computed(() => {
 	const routes = dynamicLayoutRoute.children
