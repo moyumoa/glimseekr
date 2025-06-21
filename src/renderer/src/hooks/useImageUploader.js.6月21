@@ -6,23 +6,14 @@ import { useBucketUpdater } from '@/hooks'
 import { useStoreData } from '@/composables/useStoreData'
 import Compressor from 'compressorjs'
 
-// ====== 全局变量：共享 input、任务队列 ======
+// ====== 全局变量：共享 input 和上传状态 ======
 let sharedInput = null
 let inputCreated = false
-const uploadQueue = []
-let processing = false
-let pendingParams = null
+let isUploading = false
 
-export function useImageUploader(defaultOptions = {}) {
+export function useImageUploader() {
   const ident = ref('')
-  const defaultParams = ref({
-    apiFn: $api.space.picstorage,
-    compressOptions: { quality: 0.8, maxWidth: 1440 },
-    uploadOriginal: true,
-    uploadThumb: true,
-    urlSource: 'original',
-    ...defaultOptions
-  })
+  const defaultParams = ref({})
   const loading = ref(false)
   const uploadedUrls = ref([])
   const error = ref(null)
@@ -46,6 +37,7 @@ export function useImageUploader(defaultOptions = {}) {
   }
 
   const resetStatus = () => {
+    loading.value = false
     isCompleted.value = false
     uploadedUrls.value = []
     error.value = null
@@ -55,12 +47,18 @@ export function useImageUploader(defaultOptions = {}) {
     failedFiles.value = []
   }
 
-  const handleUpload = async (files, params) => {
-    resetStatus()
+  const handleUpload = async (files) => {
+    if (isUploading) {
+      error.value = '已有上传任务，请稍候再试'
+      return
+    }
 
+    resetStatus()
+    loading.value = true
+    isUploading = true
     total.value = files.length
 
-    const { onEachComplete, onComplete } = params
+    const { onEachComplete, onComplete } = defaultParams.value
 
     for (const file of files) {
       try {
@@ -73,7 +71,7 @@ export function useImageUploader(defaultOptions = {}) {
             updateBucket
           },
           {
-            ...params,
+            ...defaultParams.value,
             width: imageSize.width,
             height: imageSize.height,
             size_source: imageSize.source
@@ -99,6 +97,8 @@ export function useImageUploader(defaultOptions = {}) {
       }
     }
 
+    loading.value = false
+    isUploading = false
     sharedInput.value = null
     updateBucket()
     isCompleted.value = true
@@ -112,18 +112,6 @@ export function useImageUploader(defaultOptions = {}) {
         failedFiles: failedFiles.value
       })
     }
-  }
-
-  const processQueue = async () => {
-    if (processing) return
-    processing = true
-    loading.value = true
-    while (uploadQueue.length) {
-      const task = uploadQueue.shift()
-      await handleUpload(task.files, task.params)
-    }
-    loading.value = false
-    processing = false
   }
 
   const isValidImage = (file) => {
@@ -142,9 +130,7 @@ export function useImageUploader(defaultOptions = {}) {
 
     if (!validFiles.length) return
 
-    uploadQueue.push({ files: validFiles, params: pendingParams })
-    pendingParams = null
-    processQueue()
+    await handleUpload(validFiles)
   }
 
   const open = ({
@@ -154,10 +140,10 @@ export function useImageUploader(defaultOptions = {}) {
     onEachComplete,
     ...options
   }) => {
+    if (isUploading) return (error.value = '上传中，请等待完成')
     ident.value = identkey
     sharedInput.multiple = multiple
-    pendingParams = {
-      ...defaultParams.value,
+    defaultParams.value = {
       onComplete,
       onEachComplete,
       ...options
@@ -169,13 +155,8 @@ export function useImageUploader(defaultOptions = {}) {
     sharedInput.click()
   }
 
-  const setDefaults = (opts = {}) => {
-    Object.assign(defaultParams.value, opts)
-  }
-
   return {
     open,
-    setDefaults,
     uploadedUrls,
     loading,
     error,
@@ -239,43 +220,26 @@ const mimeToExt = {
 }
 
 async function uploadToServer(file, { bucket, updateBucket }, params = {}) {
-  const {
-    apiFn = $api.space.picstorage,
-    compressOptions = {},
-    uploadOriginal = true,
-    uploadThumb = true,
-    urlSource = uploadOriginal ? 'original' : 'thumb',
-    ...rest
-  } = params
   const { name, size, type, lastModified } = file
   const ext = mimeToExt[type] || 'jpg'
   const baseKey = `middle/images/${bucket}/${uuidv4()}-${Date.now()}`
   const originalKey = `${baseKey}.${ext}`
   const thumbKey = `${baseKey}-thumb.${ext}`
 
-  let compressedFile = null
-  if (uploadThumb || (!uploadOriginal && urlSource === 'thumb')) {
-    compressedFile = await new Promise((resolve, reject) => {
-      new Compressor(file, {
-        quality: 0.8,
-        maxWidth: 1440,
-        ...compressOptions,
-        success: resolve,
-        error: reject
-      })
+  const compressedFile = await new Promise((resolve, reject) => {
+    new Compressor(file, {
+      quality: 0.8,
+      maxWidth: 1440,
+      success: resolve,
+      error: reject
     })
-  }
+  })
 
-  let originalRes = null
-  if (uploadOriginal) {
-    originalRes = await uploadToQiniu(file, originalKey, uploadToken.value)
-  }
+  const originalRes = await uploadToQiniu(file, originalKey, uploadToken.value)
+  const { key: originalUrl, hash } = originalRes
 
-  let thumbRes = null
-  if (uploadThumb) {
-    const upFile = compressedFile || file
-    thumbRes = await uploadToQiniu(upFile, thumbKey, uploadToken.value)
-  }
+  const thumbRes = await uploadToQiniu(compressedFile, thumbKey, uploadToken.value)
+  const { key: thumbUrl } = thumbRes
 
   const payload = {
     name,
@@ -283,27 +247,17 @@ async function uploadToServer(file, { bucket, updateBucket }, params = {}) {
     ptype: type,
     ext,
     lastModified,
+    hash,
+    url: originalUrl,
+    original_url: originalUrl,
+    thumb_url: thumbUrl,
+    thumb_size: compressedFile.size,
+    thumb_hash: thumbRes.hash,
     bucket,
-    ...rest
+    ...params
   }
 
-  if (uploadOriginal && originalRes) {
-    payload.original_url = originalRes.key
-    payload.hash = originalRes.hash
-    if (urlSource === 'original') payload.url = originalRes.key
-  }
-
-  if (uploadThumb && thumbRes) {
-    payload.thumb_url = thumbRes.key
-    payload.thumb_size = (compressedFile || file).size
-    payload.thumb_hash = thumbRes.hash
-    if (urlSource === 'thumb') {
-      payload.url = thumbRes.key
-      if (!payload.hash) payload.hash = thumbRes.hash
-    }
-  }
-
-  const result = await apiFn(payload)
+  const result = await $api.space.picstorage(payload)
 
   if (result?.data?.used_storage !== undefined) {
     updateBucket({ used_storage: result.data.used_storage })

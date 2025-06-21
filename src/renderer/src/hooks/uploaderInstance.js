@@ -6,9 +6,11 @@ import { useImageUploader } from '@/hooks'
 
 let _up_loader = null
 
-export const uploader = () => {
+export const uploader = (options = {}) => {
   if (!_up_loader) {
-    _up_loader = useImageUploader()
+    _up_loader = useImageUploader(options)
+  } else if (options && Object.keys(options).length) {
+    _up_loader.setDefaults(options)
   }
   return _up_loader
 }

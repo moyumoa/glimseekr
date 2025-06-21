@@ -12,7 +12,7 @@
           </div>
           <i-svg name="kejianyunpan" size="16" />
           <span class="pageoperbar-title-text">{{ title || '照片列表'
-            }}</span>
+          }}</span>
         </div>
         <div class="uploading" v-else>
           <i-svg name="jiazai" size="16" class="uploading-icon" />
@@ -64,7 +64,13 @@ import { formatBytes, deepClone, debounce } from '@mvmoo/us'
 import { $api } from '@/config/api.js'
 const { id, title } = defineProps(['id', 'title'])
 import { uploader } from '@/hooks'
-const $up = uploader()
+const $up = uploader({
+  apiFn: $api.space.picstorage,
+  compressOptions: { quality: 0.8, maxWidth: 1440 }, // 默认压缩参数
+  uploadOriginal: false,  // 是否上传原图
+  uploadThumb: true,     // 是否上传压缩图
+  urlSource: 'original'  // payload.url 取值，可为 'original' 或 'thumb'
+})
 const upLoading = computed(() => $up.loading.value)
 
 const waterfallCursorRef = ref(null)
@@ -87,8 +93,6 @@ const upload = () => {
       imgInfo.folder_id = imgInfo.folder
       // waterfallCursorRef.value?.insertItemToTop(imgInfo)
       pendingItems.value.push(imgInfo)
-
-      console.log(`已上传 张`, pendingItems.value.length)
       // ✨ 每上传几张立即插入一次
       if (pendingItems.value.length >= 5) {
         flushToTop()
