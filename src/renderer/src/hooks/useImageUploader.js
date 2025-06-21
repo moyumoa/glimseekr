@@ -6,39 +6,12 @@ import { useBucketUpdater } from '@/hooks'
 import { useStoreData } from '@/composables/useStoreData'
 import Compressor from 'compressorjs'
 
-// ====== 全局变量：共享 input 和队列 ======
+// ====== 全局变量：共享 input ======
 let sharedInput = null
 let inputCreated = false
 let processing = false
-let pendingParams = null
-const QUEUE_CACHE_KEY = 'imageUploadHistory'
-const MAX_QUEUE_CACHE = 100
-
-function loadQueueCache() {
-  try {
-    const raw = localStorage.getItem(QUEUE_CACHE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch (err) {
-    console.error('[loadQueueCache]', err)
-    return []
-  }
-}
-
-function saveQueueCache(list) {
-  try {
-    const cache = list.slice(-MAX_QUEUE_CACHE).map((g) => ({
-      id: g.id,
-      status: g.status,
-      tasks: g.tasks.map((t) => ({ name: t.name, status: t.status }))
-    }))
-    localStorage.setItem(QUEUE_CACHE_KEY, JSON.stringify(cache))
-  } catch (err) {
-    console.error('[saveQueueCache]', err)
-  }
-}
-
-const queueState = ref(loadQueueCache())
-const needsResume = ref(false)
+// 单一上传队列
+const queueState = ref([])
 
 export function useImageUploader(defaultOptions = {}) {
   const ident = ref('')
@@ -50,79 +23,63 @@ export function useImageUploader(defaultOptions = {}) {
     urlSource: 'original',
     ...defaultOptions
   })
-  const loading = ref(false)
   const uploadedUrls = ref([])
   const error = ref(null)
-  const total = ref(0)
-  const successCount = ref(0)
-  const failCount = ref(0)
-  const failedFiles = ref([])
-  const isCompleted = ref(false)
 
+  const isCompleted = ref(false)
   const { updateBucket } = useBucketUpdater()
   const { data: spaceInfo } = useStoreData('uspace')
 
+  // 初始化 input
   if (!inputCreated) {
     sharedInput = document.createElement('input')
     sharedInput.type = 'file'
     sharedInput.style.display = 'none'
-    sharedInput.accept = 'image/jpeg, image/png, image/gif, image/webp, image/svg+xml'
+    sharedInput.accept = 'image/jpeg, image/png, image/gif, image/webp, image/svg+xml, .raw'
     document.body.appendChild(sharedInput)
     inputCreated = true
   }
 
-  const resetTaskStatus = () => {
+  const total = computed(() => queueState.value.length)
+  const successCount = computed(() => queueState.value.filter((t) => t.status === 'done').length)
+  const failCount = computed(() => queueState.value.filter((t) => t.status === 'error').length)
+  const failedFiles = computed(() =>
+    queueState.value.filter((t) => t.status === 'error').map((t) => t.file)
+  )
+  const loading = computed(() => processing)
+
+  const resetStatus = () => {
     isCompleted.value = false
     uploadedUrls.value = []
     error.value = null
-    total.value = 0
-    successCount.value = 0
-    failCount.value = 0
-    failedFiles.value = []
+    queueState.value = []
   }
-
 
   const isValidImage = (file) => {
-    return file.type.startsWith('image/') && /\.(jpe?g|png|gif|webp|svg)$/i.test(file.name)
+    const extMatch = /\.(jpe?g|png|gif|webp|svg|raw)$/i.test(file.name)
+    return file.type.startsWith('image/') || extMatch
   }
 
-   function addGroup(files, params) {
-    const group = {
-      id: uuidv4(),
-      status: 'waiting',
-      params,
-      tasks: files.map((f) => ({ file: f, name: f.name, status: 'waiting' }))
-    }
-    queueState.value.push(group)
-    saveQueueCache(queueState.value)
-    return group
-  }
-
-  const onSelect = (e) => {
+  const onSelect = (params) => async (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
 
     const validFiles = files.filter(isValidImage)
 
     if (validFiles.length < files.length) {
-      error.value = '部分文件格式不支持，仅允许 jpg/png/gif/webp/svg'
+      error.value = '部分文件格式不支持，仅允许 jpg/png/gif/webp/svg/raw'
     }
 
     if (!validFiles.length) return
 
-    const group = addGroup(validFiles, pendingParams)
+    const tasks = validFiles.map((f) => ({
+      file: f,
+      name: f.name,
+      status: 'waiting',
+      params
+    }))
 
-    pendingParams = null
-
-    // 如果存在旧的未完成任务，先等待用户处理
-    if (!processing) {
-      const firstUnfinished = queueState.value.find((g) => g.status !== 'done')
-      if (firstUnfinished && firstUnfinished.id !== group.id) {
-        needsResume.value = true
-        return
-      }
-    }
-
+    queueState.value.push(...tasks)
     processQueue()
   }
 
@@ -135,7 +92,7 @@ export function useImageUploader(defaultOptions = {}) {
   }) => {
     ident.value = identkey
     sharedInput.multiple = multiple
-    pendingParams = {
+    const params = {
       ...defaultParams.value,
       onComplete,
       onEachComplete,
@@ -143,8 +100,8 @@ export function useImageUploader(defaultOptions = {}) {
     }
     getQiniuToken()
     sharedInput.onchange = null
-    sharedInput.removeEventListener('change', onSelect)
-    sharedInput.addEventListener('change', onSelect, { once: true })
+    sharedInput.removeEventListener('change', onSelect(params))
+    sharedInput.addEventListener('change', onSelect(params), { once: true })
     sharedInput.click()
   }
 
@@ -152,133 +109,90 @@ export function useImageUploader(defaultOptions = {}) {
     Object.assign(defaultParams.value, opts)
   }
 
-  const getQueue = () => queueState.value
-
-  const getRecentQueue = () => queueState.value.slice(-MAX_QUEUE_CACHE)
-
-  const clearQueue = () => {
-    queueState.value = []
-    saveQueueCache(queueState.value)
-  }
-
-  const removeGroup = (id) => {
-    const idx = queueState.value.findIndex((g) => g.id === id)
-    if (idx > -1) {
-      queueState.value.splice(idx, 1)
-      saveQueueCache(queueState.value)
-    }
-  }
-
-  const hasUnfinished = computed(() => queueState.value.some((g) => g.status !== 'done'))
-
-  const continuePending = () => {
-    needsResume.value = false
-    processQueue()
-  }
-
   async function processQueue() {
     if (processing) return
-    const group = queueState.value.find((g) => g.status !== 'done')
-    if (!group) {
-      loading.value = false
-      saveQueueCache(queueState.value)
+    const task = queueState.value.find((t) => t.status === 'waiting')
+    if (!task) {
+      if (!queueState.value.length) return
+      finalizeQueue()
       return
     }
     processing = true
-    loading.value = true
-    await handleGroup(group)
+    await handleTask(task)
     processing = false
     processQueue()
   }
 
-  async function handleGroup(group) {
-    resetTaskStatus()
-    group.status = 'processing'
-    total.value = group.tasks.length
-    const { onEachComplete, onComplete } = group.params
-    let aborted = false
+  async function handleTask(task) {
+    task.status = 'processing'
+    const { onEachComplete, ...params } = task.params
 
-    for (const task of group.tasks) {
-      if (task.status === 'done') continue
-      try {
-        const statusUpdater = (s) => {
-          task.status = s
-          saveQueueCache(queueState.value)
-        }
-        const imageSize = await getImageSizeSafe(task.file)
-        const result = await uploadToServer(
-          task.file,
-          {
-            bucket: spaceInfo.value.bucket,
-            updateBucket
-          },
-          {
-            ...group.params,
-            width: imageSize.width,
-            height: imageSize.height,
-            size_source: imageSize.source
-          },
-          statusUpdater
-        )
+    try {
+      const statusUpdater = (s) => {
+        task.status = s
+      }
 
-        task.status = 'done'
-        task.result = result
-        saveQueueCache(queueState.value)
+      const imageSize = await getImageSizeSafe(task.file)
+      const result = await uploadToServer(
+        task.file,
+        {
+          bucket: spaceInfo.value.bucket,
+          updateBucket
+        },
+        {
+          ...params,
+          width: imageSize.width,
+          height: imageSize.height,
+          size_source: imageSize.source
+        },
+        statusUpdater
+      )
 
-        uploadedUrls.value.push(result)
-        successCount.value++
-
-        if (typeof onEachComplete === 'function') {
-          onEachComplete(result)
-        }
-      } catch (err) {
-        task.status = 'error'
-        task.error = err
-        saveQueueCache(queueState.value)
-
-        failCount.value++
-        failedFiles.value.push(task.file)
-        if (err?.errCode === 4003) {
-          error.value = '空间已满，已终止上传'
-          aborted = true
-          break
-        }
-        if (err?.code === 'ERR_NETWORK') {
-          error.value = '网络错误，请检查网络连接'
-          aborted = true
-          break
-        }
+      task.status = 'done'
+      task.result = result
+      uploadedUrls.value.push(result)
+      if (typeof onEachComplete === 'function') {
+        onEachComplete(result)
+      }
+    } catch (err) {
+      task.status = 'error'
+      task.error = err
+      if (err?.errCode === 4003) {
+        error.value = '空间已满，已终止上传'
+      } else if (err?.code === 'ERR_NETWORK') {
+        error.value = '网络错误，请检查网络连接'
+      } else {
         console.error('[上传失败]', err)
       }
     }
+  }
+
+  function finalizeQueue() {
+    const summary = {
+      total: total.value,
+      successCount: successCount.value,
+      failCount: failCount.value,
+      failedFiles: failedFiles.value
+    }
+    const callbacks = new Set()
+    queueState.value.forEach((t) => {
+      if (typeof t.params.onComplete === 'function') {
+        callbacks.add(t.params.onComplete)
+      }
+    })
+
+    callbacks.forEach((cb) => cb(summary))
 
     updateBucket()
-    isCompleted.value = !aborted
-    group.status = aborted ? 'error' : 'done'
-    saveQueueCache(queueState.value)
-
-    if (!aborted && typeof onComplete === 'function') {
-      onComplete({
-        total: total.value,
-        successCount: successCount.value,
-        failCount: failCount.value,
-        failedFiles: failedFiles.value
-      })
-    }
-
-    if (aborted) needsResume.value = true
-    resetTaskStatus()
+    isCompleted.value = true
+    resetStatus()
   }
 
   return {
     open,
     setDefaults,
-    getQueue,
-    getRecentQueue,
-    clearQueue,
-    removeGroup,
-    hasUnfinished,
-    continuePending,
+    getQueue: () => queueState.value,
+    clearQueue: resetStatus,
     uploadedUrls,
     loading,
     error,
@@ -288,8 +202,7 @@ export function useImageUploader(defaultOptions = {}) {
     failedFiles,
     isCompleted,
     ident,
-    queue: queueState,
-    needsResume
+    queue: queueState
   }
 }
 
@@ -340,7 +253,9 @@ const mimeToExt = {
   'image/png': 'png',
   'image/gif': 'gif',
   'image/webp': 'webp',
-  'image/svg+xml': 'svg'
+  'image/svg+xml': 'svg',
+  'image/x-adobe-dng': 'dng',
+  'image/x-canon-cr2': 'cr2'
 }
 
 async function uploadToServer(file, { bucket, updateBucket }, params = {}, statusCb = () => {}) {
@@ -353,7 +268,7 @@ async function uploadToServer(file, { bucket, updateBucket }, params = {}, statu
     ...rest
   } = params
   const { name, size, type, lastModified } = file
-  const ext = mimeToExt[type] || 'jpg'
+  const ext = mimeToExt[type] || name.split('.').pop() || 'jpg'
   const baseKey = `middle/images/${bucket}/${uuidv4()}-${Date.now()}`
   const originalKey = `${baseKey}.${ext}`
   const thumbKey = `${baseKey}-thumb.${ext}`
@@ -421,28 +336,3 @@ async function uploadToServer(file, { bucket, updateBucket }, params = {}, statu
   statusCb('done')
   return result?.data || {}
 }
-
-/* 
-
-查看队列状态
-
-queue（或 getQueue()）返回完整队列，可实时查看每个任务的 status、result、error 等信息。
-
-getRecentQueue() 返回最近 100 条上传记录。
-
-clearQueue() 可手动清空队列。
-
-队列信息会自动存储到 localStorage，页面刷新后仍可获取最近 100 条记录，键名为 imageUploadHistory
-
-状态说明：
-
-waiting：已加入队列，等待上传
-
-compressing：正在压缩（若需要生成缩略图）
-
-uploading：正在上传到服务器
-
-done：上传成功
-
-error：上传失败
-*/

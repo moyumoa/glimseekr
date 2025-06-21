@@ -86,12 +86,7 @@ const flushToTop = () => {
 }
 
 const upload = () => {
-  if($up.needsResume.value) {
-    console.warn('当前有未完成的上传任务，请先完成或取消它们。')
-    $up.continuePending()
-    return
-  }
-  console.log('上传列队', $up.queue.value[0])
+  console.log('上传列队', $up.queue.value)
   pendingItems.value = []
   $up.open({
     multiple: true,
@@ -101,7 +96,7 @@ const upload = () => {
       imgInfo.folder_id = imgInfo.folder
       // waterfallCursorRef.value?.insertItemToTop(imgInfo)
       pendingItems.value.push(imgInfo)
-      console.log('列队', upQueue.value)
+      // console.log('列队状态', upQueue.value)
       // ✨ 每上传几张立即插入一次
       if (pendingItems.value.length >= 5) {
         flushToTop()

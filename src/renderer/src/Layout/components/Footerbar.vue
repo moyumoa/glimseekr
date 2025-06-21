@@ -1,9 +1,8 @@
 <template>
   <div class="bottom-status-bar" @click="navito">
-    <div class="bsb-item" :style="upLoading ? animationStyle : defaultStyle" v-for="item in upQueue" :class="['upt', `upt-${item.status}`]">
+    <div class="bsb-item" :style="upLoading ? animationStyle : defaultStyle">
       <i-svg name="chuanshuliebiao" :class="{ 'upt-uploading': upLoading }" size="16" />
-      <span class="bsb-item-t" :class="{ 'upt-uploading': upLoading }">{{ upLoading ? `${$up.successCount.value}/${item.tasks.length}` : '暂无上传任务' }}</span>
-      <!-- <span class="bsb-item-t" :class="{ 'upt-uploading': upLoading }">{{ upLoading ? upStatusText : '暂无上传任务' }}</span> -->
+      <span class="bsb-item-t" :class="{ 'upt-uploading': upLoading }">{{ upLoading ? upStatusText : '暂无上传任务' }}</span>
     </div>
 
     <div class="bsb-item">
@@ -40,7 +39,7 @@ import { uploader } from '@/hooks'
 const $up = uploader()
 
 const upLoading = computed(() => $up.loading.value)
-const upQueue = computed(() => $up.queue.value)
+const upQueue = computed(() => $up.queue.value.length)
 
 const upStatusText = computed(() => {
   return `正在上传 (${$up.successCount.value}/${$up.queue.value.length})`
@@ -71,10 +70,6 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const navito = () => {
 }
-
-onUnmounted(() => {
-  // $up.clearQueue()
-})
 
 </script>
 
