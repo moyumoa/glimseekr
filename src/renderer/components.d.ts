@@ -33,6 +33,7 @@ declare module 'vue' {
     ModalVirtualWaterfall: typeof import('./src/components/virtual-waterfall-cursor/modal-virtual-waterfall.vue')['default']
     Navigationbar: typeof import('./src/components/navigationbar/navigationbar.vue')['default']
     PagedWaterfall: typeof import('./src/components/paged-waterfall/paged-waterfall.vue')['default']
+    'PagedWaterfall copy': typeof import('./src/components/paged-waterfall/paged-waterfall copy.vue')['default']
     PhotosList: typeof import('./src/components/subpage/photos-list.vue')['default']
     ProgressiveImage: typeof import('./src/components/progressive-image/progressive-image.vue')['default']
     'ProgressiveImage copy': typeof import('./src/components/progressive-image/progressive-image copy.vue')['default']

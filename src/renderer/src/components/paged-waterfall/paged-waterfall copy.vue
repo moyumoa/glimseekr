@@ -320,37 +320,32 @@ const onImageLoad = (id, e) => {
 }
 
 const insertItemToTop = async (newItem) => {
-  await insertItemsToTop([newItem])
+  const id = props.getItemId(newItem)
+  newItem.originalWidth = newItem.width || DEFAULTWIDTH
+  newItem.originalHeight = newItem.height || DEFAULTHEIGHT
+  newItem._justInserted = true
+  delete imgRatiosRef.value[id]
+  items.value.unshift(newItem)
+  itemInfoHeights.value.unshift(0)
+  await nextTick()
+  reMeasureVisibleHeights()
+  calculateItemPositions()
+  setTimeout(() => {
+    newItem._justInserted = false
+  }, 400)
+  container.value?.scrollTo({ top: 0, behavior: 'smooth' })
 };
-const MAX_ITEMS = props.pageSize * 2; // 最大显示数量，防止内存溢出
 
 const insertItemsToTop = async (newItems = []) => {
   newItems.forEach((item) => {
     item.originalWidth = item.width || DEFAULTWIDTH
     item.originalHeight = item.height || DEFAULTHEIGHT
+    delete imgRatiosRef.value[props.getItemId(item)]
     item._justInserted = true
   })
   items.value.unshift(...newItems)
   itemInfoHeights.value.unshift(...new Array(newItems.length).fill(0))
-
-  if (items.value.length > MAX_ITEMS) {
-    const removed = items.value.splice(MAX_ITEMS)
-    itemInfoHeights.value.splice(MAX_ITEMS)
-    removed.forEach((it) => {
-      const id = props.getItemId(it)
-      delete imgRatiosRef.value[id]
-      delete loadedMap.value[id]
-    })
-    hasMore.value = true
-  }
-
   rebuildIndexMap()
-
-  const last = items.value[items.value.length - 1]
-  if (last) {
-    nextCursor.value = { clt: last.create_time, cli: last._id }
-  }
-  
   await nextTick()
   reMeasureVisibleHeights()
   calculateItemPositions()

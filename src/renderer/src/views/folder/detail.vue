@@ -25,7 +25,7 @@
             <div class="select-sele" :class="checkedClass" />
             <span class="pageoperbar-center-node-text">已选</span>
             <span>{{ checkedCount }}</span>
-            <span class="pageoperbar-center-node-text">张</span>
+            <span class="pageoperbar-center-node-text">张 {{totalCount}}</span>
           </div>
         </div>
 
@@ -72,7 +72,7 @@ const waterfallCursorRef = ref(null)
 const pendingItems = ref([])
 
 const flushToTop = () => {
-  if (pendingItems.value.length > 0) {
+  if (pendingItems.value.length > 5) {
     waterfallCursorRef.value?.insertItemsToTop([...pendingItems.value])
     pendingItems.value = []
   }
