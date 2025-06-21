@@ -109,15 +109,14 @@ let resizeObserver;
 // 获取数据的函数，使用游标分页
 const fetchItems = async () => {
   if (!hasMore.value) return;
-
+console.log('Fetching items...', items.value.at(-1));
   isLoading.value = true;
-  const lastItem = nextCursor.value;
+  const lastItem = nextCursor.value || (items.value.length > 0 ? items.value.at(-1) : null);
   const req = Object.assign({}, { limit: props.pageSize }, props.params, props.defaultParams);
   if (lastItem) {
-    req.clt = lastItem.clt;
-    req.cli = lastItem.cli;
+    req.clt = lastItem.clt || lastItem.create_time;
+    req.cli = lastItem.cli || lastItem._id;
   }
-
   try {
     const res = await props.fetchPage(req);
     const dataList = res?.data?.rows || res?.data?.list || res?.data || [];
@@ -135,8 +134,7 @@ const fetchItems = async () => {
     list.forEach((item, idx) => {
       itemIndexMap.value[props.getItemId(item)] = start + idx;
     });
-    const listLast = list[list.length - 1] || null;
-    nextCursor.value = res?.data?.next_cursor || listLast ? { clt: listLast.create_time, cli: listLast._id } : null;
+    nextCursor.value = res?.data?.next_cursor || null;
 
     // 仅对新增部分计算位置
     calculateItemPositions(true);
