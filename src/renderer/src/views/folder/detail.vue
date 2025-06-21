@@ -85,8 +85,13 @@ const flushToTop = () => {
   pendingItems.value = []
 }
 
-
 const upload = () => {
+  if($up.needsResume.value) {
+    console.warn('当前有未完成的上传任务，请先完成或取消它们。')
+    $up.continuePending()
+    return
+  }
+  console.log('上传列队', $up.queue.value[0])
   pendingItems.value = []
   $up.open({
     multiple: true,

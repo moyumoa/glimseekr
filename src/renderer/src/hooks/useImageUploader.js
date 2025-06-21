@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { uploadToQiniu } from '@/config/upload'
 import { $api } from '@/config/api.js'
 import { v4 as uuidv4 } from 'uuid'
@@ -6,15 +6,12 @@ import { useBucketUpdater } from '@/hooks'
 import { useStoreData } from '@/composables/useStoreData'
 import Compressor from 'compressorjs'
 
-// ====== 全局变量：共享 input、任务队列 ======
+// ====== 全局变量：共享 input 和队列 ======
 let sharedInput = null
 let inputCreated = false
-const uploadQueue = []
 let processing = false
 let pendingParams = null
-// 队列状态列表，供外部查看，同时缓存最近 100 条
 const QUEUE_CACHE_KEY = 'imageUploadHistory'
-// 缓存条数
 const MAX_QUEUE_CACHE = 100
 
 function loadQueueCache() {
@@ -29,13 +26,19 @@ function loadQueueCache() {
 
 function saveQueueCache(list) {
   try {
-    localStorage.setItem(QUEUE_CACHE_KEY, JSON.stringify(list.slice(-MAX_QUEUE_CACHE)))
+    const cache = list.slice(-MAX_QUEUE_CACHE).map((g) => ({
+      id: g.id,
+      status: g.status,
+      tasks: g.tasks.map((t) => ({ name: t.name, status: t.status }))
+    }))
+    localStorage.setItem(QUEUE_CACHE_KEY, JSON.stringify(cache))
   } catch (err) {
     console.error('[saveQueueCache]', err)
   }
 }
 
 const queueState = ref(loadQueueCache())
+const needsResume = ref(false)
 
 export function useImageUploader(defaultOptions = {}) {
   const ident = ref('')
@@ -59,7 +62,6 @@ export function useImageUploader(defaultOptions = {}) {
   const { updateBucket } = useBucketUpdater()
   const { data: spaceInfo } = useStoreData('uspace')
 
-  // 初始化 input
   if (!inputCreated) {
     sharedInput = document.createElement('input')
     sharedInput.type = 'file'
@@ -69,7 +71,7 @@ export function useImageUploader(defaultOptions = {}) {
     inputCreated = true
   }
 
-  const resetStatus = () => {
+  const resetTaskStatus = () => {
     isCompleted.value = false
     uploadedUrls.value = []
     error.value = null
@@ -77,108 +79,26 @@ export function useImageUploader(defaultOptions = {}) {
     successCount.value = 0
     failCount.value = 0
     failedFiles.value = []
-    queueState.value = []
   }
 
-  const handleUpload = async (files, params) => {
-    total.value = files.length
-
-    const { onEachComplete, onComplete } = params
-
-    for (const file of files) {
-      const item = queueState.value.find((q) => q.file === file)
-      try {
-        const statusUpdater = (s) => {
-          if (item) item.status = s
-          saveQueueCache(queueState.value)
-        }
-        const imageSize = await getImageSizeSafe(file)
-
-        const result = await uploadToServer(
-          file,
-          {
-            bucket: spaceInfo.value.bucket,
-            updateBucket
-          },
-          {
-            ...params,
-            width: imageSize.width,
-            height: imageSize.height,
-            size_source: imageSize.source
-          },
-          statusUpdater
-        )
-
-        if (item) {
-          item.status = 'done'
-          item.result = result
-          saveQueueCache(queueState.value)
-        }
-
-        uploadedUrls.value.push(result)
-        successCount.value++
-
-        if (typeof onEachComplete === 'function') {
-          onEachComplete(result)
-        }
-      } catch (err) {
-        if (item) {
-          item.status = 'error'
-          item.error = err
-          saveQueueCache(queueState.value)
-        }
-
-        failCount.value++
-        failedFiles.value.push(file)
-        // ✅ 如果是空间已满，终止后续上传
-        if (err?.errCode === 4003) {
-          error.value = '空间已满，已终止上传'
-          console.warn('[上传终止] 空间已满')
-          break
-        }
-
-        if (err?.code === 'ERR_NETWORK') {
-          error.value = '网络错误，请检查网络连接'
-          break
-        }
-        console.error('[上传失败]', err)
-      }
-    }
-
-    sharedInput.value = null
-    updateBucket()
-    isCompleted.value = true
-
-    // ✅ 最终回调：只返回 4 个字段
-    if (typeof onComplete === 'function') {
-      onComplete({
-        total: total.value,
-        successCount: successCount.value,
-        failCount: failCount.value,
-        failedFiles: failedFiles.value
-      })
-    }
-  }
-
-  const processQueue = async () => {
-    if (processing) return
-    processing = true
-    loading.value = true
-    while (uploadQueue.length) {
-      const task = uploadQueue.shift()
-      await handleUpload(task.files, task.params)
-    }
-    loading.value = false
-    processing = false
-    saveQueueCache(queueState.value)
-    resetStatus()
-  }
 
   const isValidImage = (file) => {
     return file.type.startsWith('image/') && /\.(jpe?g|png|gif|webp|svg)$/i.test(file.name)
   }
 
-  const onSelect = async (e) => {
+   function addGroup(files, params) {
+    const group = {
+      id: uuidv4(),
+      status: 'waiting',
+      params,
+      tasks: files.map((f) => ({ file: f, name: f.name, status: 'waiting' }))
+    }
+    queueState.value.push(group)
+    saveQueueCache(queueState.value)
+    return group
+  }
+
+  const onSelect = (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
 
@@ -190,13 +110,19 @@ export function useImageUploader(defaultOptions = {}) {
 
     if (!validFiles.length) return
 
-    validFiles.forEach((file) => {
-      queueState.value.push({ file, name: file.name, status: 'waiting' })
-    })
-    saveQueueCache(queueState.value)
+    const group = addGroup(validFiles, pendingParams)
 
-    uploadQueue.push({ files: validFiles, params: pendingParams })
     pendingParams = null
+
+    // 如果存在旧的未完成任务，先等待用户处理
+    if (!processing) {
+      const firstUnfinished = queueState.value.find((g) => g.status !== 'done')
+      if (firstUnfinished && firstUnfinished.id !== group.id) {
+        needsResume.value = true
+        return
+      }
+    }
+
     processQueue()
   }
 
@@ -235,12 +161,124 @@ export function useImageUploader(defaultOptions = {}) {
     saveQueueCache(queueState.value)
   }
 
+  const removeGroup = (id) => {
+    const idx = queueState.value.findIndex((g) => g.id === id)
+    if (idx > -1) {
+      queueState.value.splice(idx, 1)
+      saveQueueCache(queueState.value)
+    }
+  }
+
+  const hasUnfinished = computed(() => queueState.value.some((g) => g.status !== 'done'))
+
+  const continuePending = () => {
+    needsResume.value = false
+    processQueue()
+  }
+
+  async function processQueue() {
+    if (processing) return
+    const group = queueState.value.find((g) => g.status !== 'done')
+    if (!group) {
+      loading.value = false
+      saveQueueCache(queueState.value)
+      return
+    }
+    processing = true
+    loading.value = true
+    await handleGroup(group)
+    processing = false
+    processQueue()
+  }
+
+  async function handleGroup(group) {
+    resetTaskStatus()
+    group.status = 'processing'
+    total.value = group.tasks.length
+    const { onEachComplete, onComplete } = group.params
+    let aborted = false
+
+    for (const task of group.tasks) {
+      if (task.status === 'done') continue
+      try {
+        const statusUpdater = (s) => {
+          task.status = s
+          saveQueueCache(queueState.value)
+        }
+        const imageSize = await getImageSizeSafe(task.file)
+        const result = await uploadToServer(
+          task.file,
+          {
+            bucket: spaceInfo.value.bucket,
+            updateBucket
+          },
+          {
+            ...group.params,
+            width: imageSize.width,
+            height: imageSize.height,
+            size_source: imageSize.source
+          },
+          statusUpdater
+        )
+
+        task.status = 'done'
+        task.result = result
+        saveQueueCache(queueState.value)
+
+        uploadedUrls.value.push(result)
+        successCount.value++
+
+        if (typeof onEachComplete === 'function') {
+          onEachComplete(result)
+        }
+      } catch (err) {
+        task.status = 'error'
+        task.error = err
+        saveQueueCache(queueState.value)
+
+        failCount.value++
+        failedFiles.value.push(task.file)
+        if (err?.errCode === 4003) {
+          error.value = '空间已满，已终止上传'
+          aborted = true
+          break
+        }
+        if (err?.code === 'ERR_NETWORK') {
+          error.value = '网络错误，请检查网络连接'
+          aborted = true
+          break
+        }
+        console.error('[上传失败]', err)
+      }
+    }
+
+    updateBucket()
+    isCompleted.value = !aborted
+    group.status = aborted ? 'error' : 'done'
+    saveQueueCache(queueState.value)
+
+    if (!aborted && typeof onComplete === 'function') {
+      onComplete({
+        total: total.value,
+        successCount: successCount.value,
+        failCount: failCount.value,
+        failedFiles: failedFiles.value
+      })
+    }
+
+    if (aborted) needsResume.value = true
+    resetTaskStatus()
+  }
+
   return {
     open,
     setDefaults,
     getQueue,
     getRecentQueue,
     clearQueue,
+    removeGroup,
+    hasUnfinished,
+    continuePending,
     uploadedUrls,
     loading,
     error,
@@ -250,7 +288,8 @@ export function useImageUploader(defaultOptions = {}) {
     failedFiles,
     isCompleted,
     ident,
-    queue: queueState
+    queue: queueState,
+    needsResume
   }
 }
 
