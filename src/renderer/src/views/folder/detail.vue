@@ -16,7 +16,7 @@
 
         <div class="pageoperbar-title" v-if="!upLoading">
           <i-svg name="kejianyunpan" size="16" />
-          <span class="pageoperbar-title-text">{{ query.folder || '照片列表'
+          <span class="pageoperbar-title-text">{{ title || '照片列表'
           }}</span>
         </div>
         <div class="uploading" v-else>
@@ -53,7 +53,7 @@
 import { formatBytes, deepClone, debounce } from '@mvmoo/us'
 
 import { $api } from '@/config/api.js'
-const { id, query } = defineProps(['id', 'query'])
+const { id, title } = defineProps(['id', 'title'])
 import { uploader } from '@/hooks'
 const $up = uploader()
 const upLoading = computed(() => $up.loading.value)

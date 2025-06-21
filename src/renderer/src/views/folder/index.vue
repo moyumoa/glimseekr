@@ -1,7 +1,7 @@
 <template>
-  <FolderDetailModules v-if="paramsId && !showModalHook" :id="paramsId" :query="query" />
+  <!-- <FolderDetailModules v-if="paramsId && !showModalHook" :id="paramsId" :query="query" /> -->
 
-  <virtual-waterfall v-else ref="waterfallRef" :fetchPage="$api.space.list" :getItemId="item => item._id"
+  <virtual-waterfall v-show="!paramsId" ref="waterfallRef" :fetchPage="$api.space.list" :getItemId="item => item._id"
     :columnCount="{ 1920: 5, 1080: 4, 960: 3, 650: 2 }">
     <template #header>
       <div class="pageoperbar">
@@ -19,7 +19,8 @@
     <template #default="{ item, columnWidth, remove }">
       <flip-card lockHeightOnFlip :ref="el => el && flipCardMap.set(item._id, el)">
         <template #front="{ flip }">
-          <div class="vw-crad" @click="openModalHook('folder', item._id, { folder: item.name })">
+          <!-- @click="openModalHook('folder', item._id, { folder: item.name })" -->
+          <div class="vw-crad" @click="openSubPage(`/folder/details/${item._id}`, { from: 'list', preview: '1' })">
             <img v-if="item.cover" :src="`${item.cover}-thumb400.webp`" alt="" class="vw-crad-img" />
             <!--  :class="{'vw-crad-body-center': !item.cover}" -->
             <div class="vw-crad-body">
@@ -61,12 +62,9 @@
     </template>
   </virtual-waterfall>
 
-  <!-- 这里临时写死id -->
-  <!-- <Teleport to="body" v-if="showModal">
-    <div class="modal-mask" @click.self="closeModal">
-      <FolderDetailModules class="modal-body" id="5377d5c0684bd99202b194e63697e9a3" :params="modalParams" />
-    </div>
-  </Teleport> -->
+  <router-view v-if="paramsId" />
+
+  <!-- <subpage /> -->
 
 </template>
 <script setup>
@@ -160,8 +158,9 @@ const delFolder = ({ item, remove, flip }) => {
 }
 
 /* 跳转详情 */
-import { useModal } from '@/hooks'
+import { useModal, useSubPage } from '@/hooks'
 const { openModal: openModalHook, show: showModalHook } = useModal()
+const { openSubPage, closeSubPage } = useSubPage()
 const navito = (item) => {
   // openModal('folder', item._id, { folder: item.name })
   // router.push({

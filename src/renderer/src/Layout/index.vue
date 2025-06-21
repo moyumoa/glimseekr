@@ -6,12 +6,12 @@
       <div class="layout-content">
         <Sidebar />
         <div class="layout-main">
-          <!-- <router-view /> -->
-           <router-view v-slot="{ Component }">
+          <router-view />
+           <!-- <router-view v-slot="{ Component }">
             <keep-alive>
               <component :is="Component" />
             </keep-alive>
-          </router-view>
+          </router-view> -->
         </div>
       </div>
     </div>
@@ -63,11 +63,15 @@ if (userInfo.value?._id && mtttoken) {
     }
 
     .layout-main {
-      height: calc(100vh - var(--header-height));
+      height: calc(100vh - var(--header-height) - 10em);
+      max-height: calc(100vh - var(--header-height) - 10em);
+      min-height: calc(100vh - var(--header-height) - 10em);
+      overflow: visible;
+      box-sizing: border-box;
       width: 0;
-      flex: 1;
+      flex: 1 0 auto;
       // overflow-x: hidden;
-      // overflow-y: auto;
+      // overflow-y: hidden;
       // // 不显示滚动条
       // scrollbar-width: none; /* Firefox */
       // -ms-overflow-style: none; /* Internet Explorer and Edge */

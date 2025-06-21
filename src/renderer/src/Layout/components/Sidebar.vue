@@ -28,7 +28,7 @@ const sidebars = computed(() => {
 		.map(route => ({
 			...route.meta,
 			// path只保留有效路径 去掉动态参数 例如 /space/:id? => /space
-			path: route.path.replace(/(:\w+\??)/g, '').replace(/\/$/, ''),
+			path: `/${route.path.replace(/(:\w+\??)/g, '').replace(/\/$/, '')}`,
 		}))
 	return routes
 })

@@ -4,10 +4,10 @@ export const dynamicLayoutRoute = {
   path: '/',
   name: 'Layout',
   component: () => import('@/Layout/index.vue'),
-  redirect: '/folder',
+  redirect: 'folder',
   children: [
     {
-      path: '/folder/:id?',
+      path: 'folder',
       name: 'Folder',
       component: () => import('@/views/folder/index.vue'),
       meta: {
@@ -16,7 +16,21 @@ export const dynamicLayoutRoute = {
         icon: 'wenjianjiadakai',
         size: 18,
         side: true
-      }
+      },
+      children: [
+        {
+          path: 'details/:id/:title?',
+          name: 'Details',
+          props: true,
+          meta: {
+            title: '详情',
+            icon: 'kehuziliao',
+            size: 18,
+            side: false
+          },
+          component: () => import('@/views/folder/detail.vue')
+        }
+      ]
     },
     {
       path: '/film-selection-delivery/:id?',
@@ -42,11 +56,6 @@ export const dynamicLayoutRoute = {
         side: true
       }
     },
-    // {
-    //   path: '/folder/detail/:id',
-    //   name: 'FolderDetail',
-    //   component: () => null
-    // },
     {
       path: '/customer',
       name: 'Customer',
@@ -107,18 +116,6 @@ export const dynamicLayoutRoute = {
 
 const routes = [
   dynamicLayoutRoute,
-  {
-    path: '/details/:id',
-    name: 'Details',
-    meta: {
-      layout: 'DetailsLayout', // 路由使用的布局
-      title: '详情',
-      icon: 'kehuziliao',
-      size: 18,
-      side: false
-    },
-    component: () => import('@/Layout/details.vue')
-  },
   {
     path: '/login',
     name: 'Login',
