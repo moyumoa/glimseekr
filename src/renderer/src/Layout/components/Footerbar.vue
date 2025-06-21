@@ -72,7 +72,7 @@ const navito = () => {
 }
 
 onUnmounted(() => {
-  $up.clearQueue()
+  // $up.clearQueue()
 })
 
 </script>
