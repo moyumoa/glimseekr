@@ -286,7 +286,7 @@ const setItemInfoHeight = (el, index) => {
   }
 };
 
-const reMeasureVisibleHeights = debounce(() => {
+const reMeasureVisibleHeights = throttle(() => {
   nextTick(() => {
     const els = container.value?.querySelectorAll('[data-index]')
     let changed = false
@@ -309,7 +309,7 @@ const reMeasureVisibleHeights = debounce(() => {
     })
     if (changed) calculateItemPositions()
   })
-}, 300)
+}, 64)
 
 // 计算图片的比例
 // const onImageLoad = (id, e) => {

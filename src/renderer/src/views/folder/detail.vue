@@ -76,7 +76,6 @@ const flushToTop = () => {
   pendingItems.value = []
 }
 
-const flushDebounced = debounce(flushToTop, 400)
 
 const upload = () => {
   pendingItems.value = []
