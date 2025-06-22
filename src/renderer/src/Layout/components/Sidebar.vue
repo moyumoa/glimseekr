@@ -6,9 +6,9 @@
 				<i-svg :name="item.icon" :size="item.size" />
 				<span class="sidebar-item-title">{{ item.title }}</span>
 			</div>
-			<div class="sidebar-item" :class="{ actived: route.path.startsWith('/personal') }"
+			<div class="sidebar-item" :class="{ uactived: route.path.startsWith('/personal') }"
 				@click="navito({ path: '/personal' })">
-				<i-svg name="gerenzhongxin" :size="20" />
+				<img :src="userInfo?.avatar || '@/icon.png'" decoding="async" class="uavatar" />
 				<span class="sidebar-item-title">{{ userInfo?.nickname || '我的' }}</span>
 			</div>
 		</div>
@@ -56,7 +56,17 @@ $--top-height: 24px;
 	display: flex;
 	flex-direction: column;
 	position: relative;
+	overflow: hidden;
+	// transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+	// transform: translateX(0);
+	// opacity: 1;
 }
+
+// .hideside {
+// 	transform: translateX(-100%);
+// 	opacity: 0;
+// 	pointer-events: none;
+// }
 
 
 .sidebar ::-webkit-scrollbar {
@@ -80,6 +90,12 @@ $--top-height: 24px;
 	transition: all 0.15s ease-out;
 	border-radius: 52px;
 
+	&:last-child {
+		margin: 0;
+		padding: 0 12px;
+		opacity: 0.9;
+	}
+
 	&:hover {
 		color: var(--text-primary);
 		opacity: 0.9;
@@ -91,6 +107,15 @@ $--top-height: 24px;
 	}
 }
 
+.uavatar {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 1px solid var(--text-primary);
+	box-sizing: border-box;
+}
+
 .actived {
 	color: var(--text-primary);
 	opacity: 1;
@@ -100,6 +125,17 @@ $--top-height: 24px;
 			rgba(255, 255, 255, 0.06) 20%,
 			rgba(255, 255, 255, 0.04) 50%,
 			rgba(255, 255, 255, 0.025) 80%);
+	background-size: 100% 100%;
+	position: relative;
+}
+
+.uactived {
+	color: var(--text-primary);
+	opacity: 1;
+	background: linear-gradient(90deg,
+			rgba(162, 184, 203, 0.2) 20%,
+			rgba(162, 184, 203, 0.15) 50%,
+			rgba(162, 184, 203, 0.1) 80%);
 	background-size: 100% 100%;
 	position: relative;
 }

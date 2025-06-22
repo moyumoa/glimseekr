@@ -40,6 +40,7 @@ import { Loading } from '@element-plus/icons-vue'
 
 // === 参数定义 ===
 const props = defineProps({
+  belong: { type: String, default: '' },
   itemWrapper: { type: [String, Object], default: 'div' },
   fetchPage: Function,
   getItemId: Function,
@@ -55,8 +56,8 @@ const VIEWPORT_BUFFER = 1000
 const VERTICAL_GAP = 16
 const HORIZONTAL_GAP = 16
 const MAX_REMOVED_ITEMS = 2000
-const defaultWidth = 600
-const defaultHeight = 450
+const defaultWidth = 300
+const defaultHeight = 400
 
 // === 响应式状态 ===
 const isInitialLoading = ref(true)
@@ -166,7 +167,7 @@ const loadMore = async () => {
       req.clt = lastItem.create_time
       req.cli = lastItem._id
     }
-    const res = await props.fetchPage(req)
+    const res = await props.fetchPage(props.belong, req)
     const dataList = res?.data?.rows || res?.data?.list || res?.data || []
     const list = dataList.map(item => {
       item.originalWidth = item.width || defaultWidth

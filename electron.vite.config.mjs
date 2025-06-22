@@ -91,6 +91,10 @@ export default defineConfig({
           pure_funcs: ['__f__']
         }
       }
+    },
+    server: {
+      host: '0.0.0.0', // 👈 允许用 IP / 网络访问，不限制 localhost
+      port: 5173
     }
   }
 })

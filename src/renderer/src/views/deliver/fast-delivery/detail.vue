@@ -1,77 +1,104 @@
 <template>
-  <paged-waterfall ref="waterfallCursorRef" :fetchPage="$api.folderPic.list" :getItemId="(item) => item._id"
-    :getImageSrc="(item) => `${item.thumb_url}-thumb400.webp`" :params="{ folder: id }" :pageSize="30"
-    :columnCount="{ 1080: 5, 860: 4, 560: 3 }" :gap="16">
-    <template #header>
-      <div class="pageoperbar">
-
-        <div class="pageoperbar-center">
-          <div class="pageoperbar-center-node" @click.stop="checkAllChange">
-            <div class="select-sele" :class="checkedClass" />
-            <span class="pageoperbar-center-node-text">批量删除</span>
-            <span>{{ checkedCount }}</span>
-            <span class="pageoperbar-center-node-text">张</span>
-          </div>
-        </div>
-
-        <div class="pageoperbar-title" v-if="!upLoading">
-          <i-svg name="kejianyunpan" size="16" />
-          <span class="pageoperbar-title-text">{{ query.folder || '照片列表'
-          }}</span>
-        </div>
-        <div class="uploading" v-else>
-          <i-svg name="jiazai" size="16" class="uploading-icon" />
-          <span class="uploading-text">正在上传中 ({{ $up.successCount.value }}/{{ $up.total.value }})</span>
-          <span class="uploading-text-desc">请勿关闭窗口</span>
-        </div>
-
-
-
-        <div class="pageoperbar-inner">
-          <!-- <span class="uploading-text-desc">已选 张</span> -->
-          <!-- <span class="uploading-text-desc" v-if="$up.selectedCount.value > 0">总计 {{ formatBytes($up.selectedSize.value) }}</span> -->
-
-          <div class="pageoperbar-inner-item" @click="upload(id)">
-            <i-svg name="choseimage" size="14" />
-            <span class="pageoperbar-inner-item-title">上传照片</span>
-          </div>
-        </div>
-      </div>
+  <full-layout>
+    <template #side>
+      <div>2131111111111</div>
     </template>
-    <template #extra="{ item }">
-      <div @click.stop="selectorItem(item)">
-        <div>{{ item.name }}</div>
-        <div>{{ formatBytes(item.size) }}</div>
-        <div class="select-sele" :class="{ 'select-sele-active': !!checkedPics[item._id] }"
-          @click.stop="selectorItem(item)" />
-      </div>
+    <template #main>
+      <paged-waterfall ref="waterfallCursorRef" :fetchPage="$api.folderPic.list" :getItemId="(item) => item._id"
+        :getImageSrc="(item) => `${item.thumb_url}-thumb400.webp`" :params="{ folder: id }" :pageSize="30"
+        :columnCount="{ 1080: 5, 860: 4, 560: 3 }" :gap="16">
+        <template #header>
+          <div class="pageoperbar">
+
+            <div class="pageoperbar-title">
+              <div class="backbox" @click="closeSubPage()">
+                <i-svg name="ah5taocan" class="backbox-icon" size="16" />
+                <span class="backbox-text">返回</span>
+              </div>
+              <template v-if="!upLoading">
+                <i-svg name="kejianyunpan" size="16" />
+                <span class="pageoperbar-title-text">
+                  {{ title || '照片列表' }}
+                </span>
+              </template>
+            </div>
+            <div class="uploading" v-if="upLoading">
+              <i-svg name="ziyuanzhongxin" size="16" class="uploading-icon" />
+              <span class="uploading-text">正在上传中</span>
+              <span class="uploading-text-desc">原则上不建议切换窗口</span>
+            </div>
+
+            <div class="pageoperbar-center">
+              <div class="pageoperbar-center-node" @click.stop="checkAllChange">
+                <div class="select-sele" :class="checkedClass" style=" margin-right: 4px;" />
+                <span class="pageoperbar-center-node-text">已选</span>
+                <span>{{ checkedCount }}</span>
+                <span class="pageoperbar-center-node-text">张</span>
+              </div>
+            </div>
+
+            <div class="pageoperbar-inner">
+              <div class="pageoperbar-inner-item" @click="upload(id)">
+                <i-svg name="choseimage" size="14" />
+                <span class="pageoperbar-inner-item-title">批量操作</span>
+              </div>
+              <div class="pageoperbar-inner-item" @click="upload(id)">
+                <i-svg name="choseimage" size="14" />
+                <span class="pageoperbar-inner-item-title">上传照片</span>
+              </div>
+            </div>
+          </div>
+        </template>
+        <template #extra="{ item }">
+          <div class="extrabox" @click.stop="selectorItem(item)">
+            <div class="extrabox-left">
+              <div class="extrabox-left-title">{{ item.name }}</div>
+              <div class="extrabox-left-desc">{{ formatBytes(item.size) }} </div>
+            </div>
+            <div class="extrabox-right">
+              <div class="select-sele" :class="{ 'select-sele-active': !!checkedPics[item._id] }"
+                @click.stop="selectorItem(item)" />
+            </div>
+          </div>
+        </template>
+      </paged-waterfall>
     </template>
-  </paged-waterfall>
+  </full-layout>
+
 </template>
 
 <script setup>
+import { useModal, useSubPage } from '@/hooks'
+const { closeSubPage } = useSubPage()
+
 import { formatBytes, deepClone, debounce } from '@mvmoo/us'
 
 import { $api } from '@/config/api.js'
-const { id, query } = defineProps(['id', 'query'])
+const { id, title } = defineProps(['id', 'title'])
 import { uploader } from '@/hooks'
-const $up = uploader()
+const $up = uploader({
+  apiFn: $api.space.picstorage,
+  compressOptions: { quality: 0.8, maxWidth: 1440 }, // 默认压缩参数
+  uploadOriginal: false,  // 是否上传原图
+  uploadThumb: true,     // 是否上传压缩图
+  urlSource: 'original'  // payload.url 取值，可为 'original' 或 'thumb'
+})
 const upLoading = computed(() => $up.loading.value)
+
+// 监听列队状态
+const upQueue = computed(() => $up.queue.value)
 
 const waterfallCursorRef = ref(null)
 
 const pendingItems = ref([])
 
 const flushToTop = () => {
-  if (pendingItems.value.length > 0) {
-    waterfallCursorRef.value?.insertItemsToTop([...pendingItems.value])
-    pendingItems.value = []
-  }
+  waterfallCursorRef.value?.insertItemsToTop([...pendingItems.value])
+  pendingItems.value = []
 }
 
-const flushDebounced = debounce(flushToTop, 400)
-
 const upload = () => {
+  console.log('上传列队', $up.queue.value)
   pendingItems.value = []
   $up.open({
     multiple: true,
@@ -81,12 +108,10 @@ const upload = () => {
       imgInfo.folder = imgInfo.folder
       // waterfallCursorRef.value?.insertItemToTop(imgInfo)
       pendingItems.value.push(imgInfo)
-
+      // console.log('列队状态', upQueue.value)
       // ✨ 每上传几张立即插入一次
-      if (pendingItems.value.length >= 3) {
+      if (pendingItems.value.length >= 5) {
         flushToTop()
-      } else {
-        flushDebounced()
       }
     },
     onComplete: ({ total, successCount, failCount, failedFiles }) => {
@@ -145,6 +170,43 @@ const selectorItem = (item) => {
 </script>
 
 <style lang="scss" scoped>
+.backbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text-primary);
+  padding-right: 12px;
+  margin-right: 12px;
+  position: relative;
+
+  // 在结尾(右边)加一条分割线
+  &::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 80%;
+    background-color: var(--text-secondary);
+  }
+
+  &:hover {
+    color: var(--text-soft);
+  }
+
+  &-icon {
+    transform: rotate(180deg);
+    line-height: 0;
+    margin-right: 5px;
+  }
+
+  &-text {
+    font-size: 14px;
+  }
+}
+
 .pageoperbar {
   margin-bottom: 12px;
   padding: 8px 16px;
@@ -155,20 +217,20 @@ const selectorItem = (item) => {
   // background: linear-gradient(to bottom, rgba(210, 15, 15, 0) 0%, rgba(0, 0, 0, 0.1) 100%);
 
   // 毛玻璃背景
-  // backdrop-filter: blur(16px);
-  // -webkit-backdrop-filter: blur(16px);
-  // background-color: rgba(18, 18, 18, 1);
+  backdrop-filter: blur(64px) saturate(150%);
+  -webkit-backdrop-filter: blur(64px) saturate(150%);
+  background-color: rgba(18, 18, 18, 0.2);
   // background-color: #303133;
-  background-color: #2c2e32;
+  // background-color: #2c2e32;
 
   // 在底部加阴影
   box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.2);
 
   &-title {
     flex: 1 0 auto;
+    width: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
     font-size: 16px;
     color: var(--text-primary);
     font-weight: 500;
@@ -196,6 +258,7 @@ const selectorItem = (item) => {
     width: 0;
     display: flex;
     align-items: center;
+    justify-content: center;
     box-sizing: border-box;
 
     &-node {
@@ -240,7 +303,8 @@ const selectorItem = (item) => {
       align-items: center;
       cursor: pointer;
       color: var(--text-soft);
-      background-color: var(--bg-color);
+      // background-color: var(--bg-color);
+      background-color: #1c1c1c;
       transition: all 100ms ease-out;
 
       &:last-child {
@@ -274,22 +338,32 @@ const selectorItem = (item) => {
 .uploading {
   display: flex;
   align-items: center;
-  color: var(--text-regular);
+  // color: var(--text-regular);
 
   &-icon {
     flex-shrink: 0;
     font-size: 16px;
     margin-right: 8px;
-    animation: loadingrotate 0.3s infinite linear;
+    animation: loadingrotate 0.6s infinite linear;
+  }
+
+  @keyframes loadingrotate {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
   &-text {
     color: var(--text-secondary);
     font-size: 14px;
     background: linear-gradient(-90deg,
-        rgba(255, 255, 255, 0.2) 20%,
-        rgba(255, 255, 255, 0.6) 50%,
-        rgba(255, 255, 255, 0.2) 80%);
+        rgba(255, 255, 255, 0.74) 20%,
+        rgba(0, 255, 119, 0.92) 50%,
+        rgba(183, 255, 0, 0.4) 80%);
     background-size: 200% 100%;
     background-position: 40% center;
     will-change: background-position;
@@ -320,12 +394,63 @@ const selectorItem = (item) => {
   }
 }
 
+.extrabox {
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 8px 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  color: var(--text-regular);
+
+  &-left {
+    flex: 1 0 auto;
+    width: 0;
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+
+    &-title {
+      margin-bottom: 4px;
+      word-break: break-all;
+      // 最多显示两行
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      /* 限制为两行 */
+      -webkit-box-orient: vertical;
+      /* 必须设置 */
+    }
+
+    &-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+  }
+
+  &-right {
+    flex-shrink: 0;
+    margin-left: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    cursor: pointer;
+  }
+}
+
 .select-sele {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   border: 2px solid #ddd;
-  margin-right: 4px;
   display: flex;
   justify-content: center;
   align-items: center;

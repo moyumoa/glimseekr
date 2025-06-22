@@ -7,14 +7,19 @@
 
     <div class="bsb-item">
       <div class="bsb-item-space" @click="openModalHook('space', null, { title: '空间使用情况' })">
-
         <i-svg name="wangpanjihuo" size="16" />
         <span class="bsb-item-space-t">空间用量 {{ spaceInfo.usedDisplay }} / {{ spaceInfo.totalDisplay }}</span>
+        <i-svg name="ah5taocan" size="12" />
       </div>
     </div>
 
-    <el-progress :percentage="Number(spaceInfo.percent)" :stroke-width="6" :color="colors" :show-text="false" :striped="upLoading" :striped-flow="upLoading" />
+    <el-progress :percentage="Number(spaceInfo.percent)" :stroke-width="6" :color="colors" :show-text="false"
+      :striped="upLoading" :striped-flow="upLoading" />
 
+    <div class="desc">
+      <span class="desc-text">套餐有效期至</span>
+      <span class="desc-text">2022/02/02</span>
+    </div>
   </div>
 </template>
 
@@ -24,10 +29,11 @@ const spaceInfo = computed(() => {
   return calcStorageStats(infos.value.total_storage_limit, infos.value.used_storage)
 })
 const colors = [
-  { color: '#67c23a', percentage: 10 },   // 绿色：健康
-  { color: '#91cb74', percentage: 30 },   // 介于绿和黄之间
-  { color: '#e6a23c', percentage: 50 },   // 橙黄：需注意
-  { color: '#f39c12', percentage: 70 },   // 深橙：高风险
+  { color: '#67c23a', percentage: 30 },   // 绿色：健康
+  { color: '#91cb74', percentage: 50 },   // 介于绿和黄之间
+  { color: '#e6a23c', percentage: 66 },   // 橙黄：需注意
+  { color: '#f39c12', percentage: 78 },   // 深橙：高风险
+  { color: '#d60000', percentage: 90 },  // 红色：已用尽
   { color: '#d60000', percentage: 100 },  // 红色：已用尽
 ]
 
@@ -100,6 +106,10 @@ const navito = () => {
   align-items: center;
   color: var(--text-secondary);
   margin-bottom: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 
   &:last-child {
     margin-bottom: 0;
@@ -111,14 +121,36 @@ const navito = () => {
   }
 
   &-space {
+    width: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;
-    margin-right: 12px;
+    // justify-content: center;
+    // margin-right: 12px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--text-primary);
+      -webkit-text-fill-color: var(--text-primary);
+    }
 
     &-t {
+      flex: 1;
       margin-left: 6px;
     }
+  }
+}
+
+.desc {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  opacity: 0.8;
+
+  .desc-text {
+    transform: scaleY(0.95);
   }
 }
 

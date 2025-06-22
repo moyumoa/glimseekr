@@ -43,15 +43,29 @@ export const dynamicLayoutRoute = {
       }
     },
     {
-      path: 'fast-delivery/:id?',
+      path: 'fast-delivery',
       name: 'FastDelivery',
-      component: () => import('@/views/deliver/fast-delivery.vue'),
+      component: () => import('@/views/deliver/fast-delivery/index.vue'),
       meta: {
         title: '快速交付',
         icon: 'wenjianjiadakai',
         size: 18,
         side: true
-      }
+      },
+      children: [
+        {
+          path: 'details/:id/:title?',
+          name: 'Details',
+          props: true,
+          meta: {
+            title: '详情',
+            icon: 'kehuziliao',
+            size: 18,
+            side: false
+          },
+          component: () => import('@/views/deliver/fast-delivery/detail.vue')
+        }
+      ]
     },
     {
       path: 'customer',

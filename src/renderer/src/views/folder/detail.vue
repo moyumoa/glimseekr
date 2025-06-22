@@ -1,38 +1,42 @@
 <template>
   <paged-waterfall ref="waterfallCursorRef" :fetchPage="$api.folderPic.list" :getItemId="(item) => item._id"
-    :getImageSrc="(item) => `${item.thumb_url}-thumb400.webp`" :params="{ folder_id: id }" :pageSize="30"
+    :getImageSrc="(item) => `${item.thumb_url}-thumb400.webp`" :params="{ folder: id }" :pageSize="30"
     :columnCount="{ 1080: 5, 860: 4, 560: 3 }" :gap="16">
     <template #header>
       <div class="pageoperbar">
 
-        <div class="pageoperbar-title" v-if="!upLoading">
+        <div class="pageoperbar-title">
           <div class="backbox" @click="closeSubPage()">
             <i-svg name="ah5taocan" class="backbox-icon" size="16" />
             <span class="backbox-text">返回</span>
           </div>
-          <i-svg name="kejianyunpan" size="16" />
-          <span class="pageoperbar-title-text">{{ title || '照片列表'
-          }}</span>
+          <template v-if="!upLoading">
+            <i-svg name="kejianyunpan" size="16" />
+            <span class="pageoperbar-title-text">
+              {{ title || '照片列表' }}
+            </span>
+          </template>
         </div>
-        <div class="uploading" v-else>
-          <i-svg name="jiazai" size="16" class="uploading-icon" />
-          <span class="uploading-text">正在上传中 ({{ $up.successCount.value }}/{{ $up.total.value }})</span>
-          <span class="uploading-text-desc">请勿关闭窗口</span>
+        <div class="uploading" v-if="upLoading">
+          <i-svg name="ziyuanzhongxin" size="16" class="uploading-icon" />
+          <span class="uploading-text">正在上传中</span>
+          <span class="uploading-text-desc">原则上不建议切换窗口</span>
         </div>
 
         <div class="pageoperbar-center">
           <div class="pageoperbar-center-node" @click.stop="checkAllChange">
-            <div class="select-sele" :class="checkedClass" />
+            <div class="select-sele" :class="checkedClass" style=" margin-right: 4px;" />
             <span class="pageoperbar-center-node-text">已选</span>
             <span>{{ checkedCount }}</span>
-            <span class="pageoperbar-center-node-text">张 {{ totalCount }}</span>
+            <span class="pageoperbar-center-node-text">张</span>
           </div>
         </div>
 
         <div class="pageoperbar-inner">
-          <!-- <span class="uploading-text-desc">已选 张</span> -->
-          <!-- <span class="uploading-text-desc" v-if="$up.selectedCount.value > 0">总计 {{ formatBytes($up.selectedSize.value) }}</span> -->
-
+          <div class="pageoperbar-inner-item" @click="upload(id)">
+            <i-svg name="choseimage" size="14" />
+            <span class="pageoperbar-inner-item-title">批量操作</span>
+          </div>
           <div class="pageoperbar-inner-item" @click="upload(id)">
             <i-svg name="choseimage" size="14" />
             <span class="pageoperbar-inner-item-title">上传照片</span>
@@ -93,7 +97,7 @@ const upload = () => {
     folder: id,
     onEachComplete: (imgInfo) => {
       imgInfo._id = imgInfo.sign
-      imgInfo.folder_id = imgInfo.folder
+      imgInfo.folder = imgInfo.folder
       // waterfallCursorRef.value?.insertItemToTop(imgInfo)
       pendingItems.value.push(imgInfo)
       // console.log('列队状态', upQueue.value)
@@ -177,7 +181,7 @@ const selectorItem = (item) => {
     transform: translateY(-50%);
     width: 1px;
     height: 80%;
-    background-color: var(--border-bottom-color);
+    background-color: var(--text-secondary);
   }
 
   &:hover {
@@ -205,9 +209,9 @@ const selectorItem = (item) => {
   // background: linear-gradient(to bottom, rgba(210, 15, 15, 0) 0%, rgba(0, 0, 0, 0.1) 100%);
 
   // 毛玻璃背景
-  backdrop-filter: blur(64px);
-  -webkit-backdrop-filter: blur(64px);
-  // background-color: rgba(18, 18, 18, 1);
+  backdrop-filter: blur(64px) saturate(150%);
+  -webkit-backdrop-filter: blur(64px) saturate(150%);
+  background-color: rgba(18, 18, 18, 0.2);
   // background-color: #303133;
   // background-color: #2c2e32;
 
@@ -326,22 +330,32 @@ const selectorItem = (item) => {
 .uploading {
   display: flex;
   align-items: center;
-  color: var(--text-regular);
+  // color: var(--text-regular);
 
   &-icon {
     flex-shrink: 0;
     font-size: 16px;
     margin-right: 8px;
-    animation: loadingrotate 0.3s infinite linear;
+    animation: loadingrotate 0.6s infinite linear;
+  }
+
+  @keyframes loadingrotate {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
   &-text {
     color: var(--text-secondary);
     font-size: 14px;
     background: linear-gradient(-90deg,
-        rgba(255, 255, 255, 0.2) 20%,
-        rgba(255, 255, 255, 0.6) 50%,
-        rgba(255, 255, 255, 0.2) 80%);
+        rgba(255, 255, 255, 0.74) 20%,
+        rgba(0, 255, 119, 0.92) 50%,
+        rgba(183, 255, 0, 0.4) 80%);
     background-size: 200% 100%;
     background-position: 40% center;
     will-change: background-position;

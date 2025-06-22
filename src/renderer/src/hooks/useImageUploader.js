@@ -9,7 +9,7 @@ import Compressor from 'compressorjs'
 // ====== 全局变量：共享 input ======
 let sharedInput = null
 let inputCreated = false
-let processing = false
+const processing = ref(false)
 // 单一上传队列
 const queueState = ref([])
 
@@ -46,7 +46,7 @@ export function useImageUploader(defaultOptions = {}) {
   const failedFiles = computed(() =>
     queueState.value.filter((t) => t.status === 'error').map((t) => t.file)
   )
-  const loading = computed(() => processing)
+  const loading = computed(() => processing.value)
 
   const resetStatus = () => {
     isCompleted.value = false
@@ -110,16 +110,16 @@ export function useImageUploader(defaultOptions = {}) {
   }
 
   async function processQueue() {
-    if (processing) return
+    if (processing.value) return
     const task = queueState.value.find((t) => t.status === 'waiting')
     if (!task) {
       if (!queueState.value.length) return
       finalizeQueue()
       return
     }
-    processing = true
+    processing.value = true
     await handleTask(task)
-    processing = false
+    processing.value = false
     processQueue()
   }
 

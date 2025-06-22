@@ -1,6 +1,6 @@
 <template>
   <virtual-waterfall ref="waterfallRef" class="waterfallview" :fetchPage="$api.folderPic.list"
-     :defaultParams="{ folder_id: 'e647148e684bd99702b0e659094a9b58' }"
+     :defaultParams="{ folder: 'e647148e684bd99702b0e659094a9b58' }"
 		 :getItemId="item => item._id"
     :columnCount="{ 1920: 5, 1080: 4, 960: 3, 650: 2 }">
     <template #header>
@@ -73,7 +73,7 @@ const upload = () => {
     folder: id,
     onEachComplete: (imgInfo) => {
       imgInfo._id = imgInfo.sign
-      imgInfo.folder_id = imgInfo.folder
+      imgInfo.folder = imgInfo.folder
       // waterfallRef.value?.insertItemToTop(imgInfo)
       pendingItems.value.push(imgInfo)
 

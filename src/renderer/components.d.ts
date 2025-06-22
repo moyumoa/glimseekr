@@ -26,6 +26,7 @@ declare module 'vue' {
     ElSpace: typeof import('element-plus/es')['ElSpace']
     ElTag: typeof import('element-plus/es')['ElTag']
     FlipCard: typeof import('./src/components/flip-card/flip-card.vue')['default']
+    FullLayout: typeof import('./src/components/full-layout/full-layout.vue')['default']
     ImgHosting: typeof import('./src/components/img-hosting/img-hosting.vue')['default']
     ImgHosting_old: typeof import('./src/components/img-hosting/img-hosting_old.vue')['default']
     ISvg: typeof import('./src/components/i-svg/i-svg.vue')['default']
@@ -46,5 +47,8 @@ declare module 'vue' {
     VirtualWaterfall: typeof import('./src/components/virtual-waterfall/virtual-waterfall.vue')['default']
     'VirtualWaterfall copy': typeof import('./src/components/virtual-waterfall/virtual-waterfall copy.vue')['default']
     VirtualWaterfallCursor: typeof import('./src/components/virtual-waterfall-cursor/virtual-waterfall-cursor.vue')['default']
+  }
+  export interface ComponentCustomProperties {
+    vLoading: typeof import('element-plus/es')['ElLoadingDirective']
   }
 }

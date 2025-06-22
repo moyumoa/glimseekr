@@ -1,11 +1,11 @@
 <template>
 
-  <virtual-waterfall v-show="!paramsId" ref="waterfallRef" :fetchPage="$api.space.list" :getItemId="item => item._id"
-    :columnCount="{ 1920: 5, 1080: 4, 960: 3, 650: 2 }">
+  <virtual-waterfall v-show="!paramsId" ref="waterfallRef" :fetchPage="$api.space.list" :belong="belong"
+    :getItemId="item => item._id" :columnCount="{ 1920: 5, 1080: 4, 960: 3, 650: 2 }">
     <template #header>
       <div class="pageoperbar">
         <div class="pageoperbar-inner">
-          <div class="pageoperbar-leftbar liquid-glass" @click="addNewItem">
+          <div class="pageoperbar-leftbar liquid-glass" @click="addNewItem" v-loading="creactLoading">
             <i-svg name="foller" size="14" />
             <span class="pageoperbar-leftbar-title">新建相册</span>
           </div>
@@ -19,8 +19,8 @@
       <flip-card lockHeightOnFlip :ref="el => el && flipCardMap.set(item._id, el)">
         <template #front="{ flip }">
           <!-- @click="openModalHook('folder', item._id, { folder: item.name })" -->
-           <!--  -->
-          <div class="vw-crad" @click="openSubPage(`/folder/details/${item._id}/${item.name}`)">
+          <!--  -->
+          <div class="vw-crad" @click="openSubPage(`/fast-delivery/details/${item._id}/${item.name}`)">
             <img v-if="item.cover" :src="`${item.cover}-thumb400.webp`" alt="" class="vw-crad-img" />
             <!--  :class="{'vw-crad-body-center': !item.cover}" -->
             <div class="vw-crad-body">
@@ -30,17 +30,19 @@
                   {{ item.name }}
                 </span>
               </div>
-              <div class="vw-crad-body-content">
+              <div class="vw-crad-body-content spacebetween">
                 <span class="vw-crad-body-content-desc">
                   {{ item.photo_count }} 张照片
-                </span>
-                <span class="vw-crad-body-content-desc">
                   {{ formatBytes(item.photo_size) }}
                 </span>
+                <div class="extra" @click.stop="() => handleFlip(item, flip)">
+                  <i-svg name="gengduo6" size="14" class="extra-icon" />
+                </div>
               </div>
-              <div class="vw-crad-body-oper" @click.stop="() => handleFlip(item, flip)">
-                <i-svg name="gengduo6" size="14" class="vw-crad-body-oper-icon" />
-              </div>
+            </div>
+
+            <div class="positoin-timer">
+              更新于 {{ formatSmartTime(item.update_time) }}
             </div>
           </div>
         </template>
@@ -66,6 +68,8 @@
 
 </template>
 <script setup>
+const belong = 'fastdelivery'
+import { formatSmartTime } from '@mvmoo/us'
 import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
@@ -80,16 +84,27 @@ import { Search } from '@element-plus/icons-vue'
 const keyword = ref('')
 
 const waterfallRef = ref(null)
+const creactLoading = ref(false)
 
-const addNewItem = () => {
-  const newItem = {
-    _id: Date.now().toString(),
-    name: '新相册',
-    create_time: Date.now(),
-    photo_count: 0,
-    photo_size: 0
+const addNewItem = async () => {
+  if (creactLoading.value) return
+  creactLoading.value = true
+  try {
+    const name = `${new Date().toLocaleDateString()}-新相册`.replace(/\//g, '-')
+    const res = await $api.space.create({ name, belong })
+    console.log('新建相册返回', res)
+    waterfallRef.value?.insertItemToTop(res.data)
+  } finally {
+    creactLoading.value = false
   }
-  waterfallRef.value?.insertItemToTop(newItem)
+
+  // const newItem = {
+  //   _id: Date.now().toString(),
+  //   name: '新相册',
+  //   create_time: Date.now(),
+  //   photo_count: 0,
+  //   photo_size: 0
+  // }
 }
 
 
@@ -116,7 +131,7 @@ const handleFlip = (item, flip) => {
 /* 提交修改 */
 const finishEdit = ({ item, flip }) => {
   const original = item.name
-  const newName = folderName.value.trim()
+  const newName = folderName.value.trim().replace(/\//g, '-')
   if (newName === original) return
 
   // item.name = newName
@@ -196,6 +211,15 @@ usePageChannel('folder', ['detail'], (payload) => {
   cursor: pointer;
   position: relative;
 
+  .positoin-timer{
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
   &-img {
     display: block;
     width: 100%;
@@ -237,10 +261,10 @@ usePageChannel('folder', ['detail'], (payload) => {
     }
 
     &-content {
+      width: 100%;
       display: flex;
       align-items: center;
       margin-top: 4px;
-      margin-right: 36px;
 
       &-desc {
         margin-right: 12px;
@@ -251,6 +275,33 @@ usePageChannel('folder', ['detail'], (payload) => {
           margin-right: 0;
         }
       }
+
+      .extra{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: background-color 0.15s ease-out;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+          color: var(--text-primary);
+        }
+
+        &-icon {
+          font-size: 14px;
+        }
+      }
+    }
+
+    .spacebetween {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     &-oper {
@@ -309,11 +360,6 @@ usePageChannel('folder', ['detail'], (payload) => {
   align-items: center;
   justify-content: center;
 
-  // 毛玻璃背景
-  // backdrop-filter: blur(16px);
-  // -webkit-backdrop-filter: blur(16px);
-  // background-color: rgba(18, 18, 18, 1);
-
   &-inner {
     display: flex;
     flex-direction: row;
@@ -334,6 +380,10 @@ usePageChannel('folder', ['detail'], (payload) => {
     cursor: pointer;
     color: var(--text-secondary);
     overflow: hidden;
+
+    :deep(.circular) {
+      width: 22px;
+    }
 
     // background-color: var(--card-color);
     transition: all 0.15s ease-out;
@@ -372,42 +422,5 @@ usePageChannel('folder', ['detail'], (payload) => {
     height: 36px;
     margin-right: 12px;
   }
-}
-
-.modal-mask {
-  width: 100vw;
-  height: 100vh;
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background-color: rgba(0, 0, 0, 0.1);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
-  backdrop-filter: blur(8px) saturate(150%);
-  -webkit-backdrop-filter: blur(8px) saturate(150%);
-}
-
-.modal-body {
-  margin: 0 16em 0;
-  // padding: 24px;
-  box-sizing: border-box;
-  background-color: var(--sidebar-bg);
-  // border-radius: 12px;
-  // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  height: calc(100vh - var(--header-height) - 6em);
-  max-height: calc(100vh - var(--header-height) - 6em);
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.025),
-    0 4px 24px rgba(0, 0, 0, 0.2);
-  // will-change: transform;
-  overflow: visible;
-  will-change: unset;
 }
 </style>
