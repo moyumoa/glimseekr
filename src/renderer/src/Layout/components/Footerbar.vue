@@ -8,7 +8,7 @@
     <div class="bsb-item">
       <div class="bsb-item-space" @click="openModalHook('space', null, { title: '空间使用情况' })">
         <i-svg name="wangpanjihuo" size="16" />
-        <span class="bsb-item-space-t">空间用量 {{ spaceInfo.usedDisplay }} / {{ spaceInfo.totalDisplay }}</span>
+        <span class="bsb-item-space-t">已用 {{ spaceInfo.usedDisplay }} / {{ spaceInfo.totalDisplay }}</span>
         <i-svg name="ah5taocan" size="12" />
       </div>
     </div>

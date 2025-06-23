@@ -48,6 +48,7 @@ $--top-height: 24px;
 
 
 .sidebar {
+	height: 100%;
 	flex-shrink: 0;
 	margin-right: 24px;
 	width: var(--side-width);

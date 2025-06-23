@@ -93,7 +93,10 @@ const addNewItem = async () => {
     const name = `${new Date().toLocaleDateString()}-新相册`.replace(/\//g, '-')
     const res = await $api.space.create({ name, belong })
     console.log('新建相册返回', res)
-    waterfallRef.value?.insertItemToTop(res.data)
+    waterfallRef.value?.insertItemToTop({
+      ...res.data,
+      _id: res.data.sign
+    })
   } finally {
     creactLoading.value = false
   }
@@ -135,11 +138,11 @@ const finishEdit = ({ item, flip }) => {
   if (newName === original) return
 
   // item.name = newName
-  waterfallRef.value?.updateItem(item._id, { name: newName })
-
   if (!newName) return notify.warning('名称不能为空')
 
   if (newName.length > 30) return notify.warning('名称最多 30 个字符')
+
+  waterfallRef.value?.updateItem(item._id, { name: newName })
 
   if (newName !== original) {
     $api.space.update({ _id: item._id, name: newName }).then(() => {
@@ -211,7 +214,7 @@ usePageChannel('folder', ['detail'], (payload) => {
   cursor: pointer;
   position: relative;
 
-  .positoin-timer{
+  .positoin-timer {
     position: absolute;
     top: 0;
     left: 0;
@@ -276,7 +279,7 @@ usePageChannel('folder', ['detail'], (payload) => {
         }
       }
 
-      .extra{
+      .extra {
         display: flex;
         align-items: center;
         justify-content: center;

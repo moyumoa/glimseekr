@@ -4,7 +4,6 @@
     :columnCount="{ 1080: 5, 860: 4, 560: 3 }" :gap="16">
     <template #header>
       <div class="pageoperbar">
-
         <div class="pageoperbar-title">
           <div class="backbox" @click="closeSubPage()">
             <i-svg name="ah5taocan" class="backbox-icon" size="16" />

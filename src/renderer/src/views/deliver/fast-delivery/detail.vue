@@ -1,7 +1,27 @@
 <template>
-  <full-layout>
+  <full-layout subhead="快速交付">
     <template #side>
-      <div>2131111111111</div>
+      <div class="folder-info">
+
+        <div class="folder-info-separate">
+          <span>封面</span>
+        </div>
+        <div class="folder-info-cover">
+          <img v-if="folderDetail?.cover" :src="folderDetail?.cover" class="folder-info-cover-img" />
+        </div>
+        <div class="folder-info-title">
+          <span class="folder-info-title-text">
+            <i-svg name="glphotoAlbum" size="16" class="folder-info-title-icon" />
+            {{ folderDetail?.name }}
+          </span>
+
+        </div>
+        <div class="folder-info-desc">
+          <span class="folder-info-desc-text">照片数量：{{ folderDetail?.photo_count || 0 }}</span>
+          <span class="folder-info-desc-text">所用空间：{{ formatBytes(folderDetail?.photo_size || 0) }}</span>
+          <span class="folder-info-desc-text">最后更新：{{ formatSmartTime(folderDetail?.update_time, '/') }}</span>
+        </div>
+      </div>
     </template>
     <template #main>
       <paged-waterfall ref="waterfallCursorRef" :fetchPage="$api.folderPic.list" :getItemId="(item) => item._id"
@@ -9,24 +29,6 @@
         :columnCount="{ 1080: 5, 860: 4, 560: 3 }" :gap="16">
         <template #header>
           <div class="pageoperbar">
-
-            <div class="pageoperbar-title">
-              <div class="backbox" @click="closeSubPage()">
-                <i-svg name="ah5taocan" class="backbox-icon" size="16" />
-                <span class="backbox-text">返回</span>
-              </div>
-              <template v-if="!upLoading">
-                <i-svg name="kejianyunpan" size="16" />
-                <span class="pageoperbar-title-text">
-                  {{ title || '照片列表' }}
-                </span>
-              </template>
-            </div>
-            <div class="uploading" v-if="upLoading">
-              <i-svg name="ziyuanzhongxin" size="16" class="uploading-icon" />
-              <span class="uploading-text">正在上传中</span>
-              <span class="uploading-text-desc">原则上不建议切换窗口</span>
-            </div>
 
             <div class="pageoperbar-center">
               <div class="pageoperbar-center-node" @click.stop="checkAllChange">
@@ -36,6 +38,13 @@
                 <span class="pageoperbar-center-node-text">张</span>
               </div>
             </div>
+
+            <div class="uploading" v-if="upLoading">
+              <i-svg name="ziyuanzhongxin" size="16" class="uploading-icon" />
+              <span class="uploading-text">正在上传中</span>
+              <!-- <span class="uploading-text-desc">原则上不建议切换窗口</span> -->
+            </div>
+
 
             <div class="pageoperbar-inner">
               <div class="pageoperbar-inner-item" @click="upload(id)">
@@ -68,13 +77,16 @@
 </template>
 
 <script setup>
-import { useModal, useSubPage } from '@/hooks'
-const { closeSubPage } = useSubPage()
-
-import { formatBytes, deepClone, debounce } from '@mvmoo/us'
-
+import { formatBytes, deepClone, debounce, parseTime, formatSmartTime } from '@mvmoo/us'
 import { $api } from '@/config/api.js'
 const { id, title } = defineProps(['id', 'title'])
+const folderDetail = ref({})
+const getFolderDetail = async () => {
+  const res = await $api.space.detail(id)
+  folderDetail.value = res.data
+}
+getFolderDetail()
+
 import { uploader } from '@/hooks'
 const $up = uploader({
   apiFn: $api.space.picstorage,
@@ -170,40 +182,91 @@ const selectorItem = (item) => {
 </script>
 
 <style lang="scss" scoped>
-.backbox {
+.folder-info {
+  width: 100%;
+  height: 100%;
   display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 15px;
-  color: var(--text-primary);
-  padding-right: 12px;
-  margin-right: 12px;
-  position: relative;
+  flex-direction: column;
+  padding: 16px;
+  box-sizing: border-box;
 
-  // 在结尾(右边)加一条分割线
-  &::before {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 1px;
-    height: 80%;
-    background-color: var(--text-secondary);
+  &-separate {
+    font-size: 13px;
+    color: var(--text-disabled);
+    text-align: center;
+    margin: 12px 0 24px;
+    position: relative;
+
+    &>span {
+      position: relative;
+      z-index: 1;
+      padding: 0 8px;
+      background-color: var(--bg-color);
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background-color: var(--divider-color);
+      transform: translateY(-50%) scaleY(0.6);
+      border-radius: 1px;
+    }
   }
 
-  &:hover {
-    color: var(--text-soft);
+  &-cover {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    aspect-ratio: 3 / 4;
+    border: 1px solid var(--divider-color);
+    background-color: var(--hover-bg);
+    box-sizing: border-box;
+
+    &-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
 
-  &-icon {
-    transform: rotate(180deg);
-    line-height: 0;
-    margin-right: 5px;
+  &-title {
+    // display: flex;
+    // align-items: center;
+    // color: var(--text-soft);
+    margin: 0 12px 24px;
+
+    &-text {
+      color: var(--text-regular);
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    &-icon {
+      margin-right: 2px;
+      transform: translateY(2px);
+    }
   }
 
-  &-text {
-    font-size: 14px;
+  &-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    margin: 0 12px 24px;
+
+
+    &-text {
+      margin-bottom: 12px;
+      white-space: nowrap; // 防止换行
+      overflow: hidden; // 超出部分隐藏
+      text-overflow: ellipsis; // 超出部分显示省略号
+    }
   }
 }
 
@@ -226,39 +289,11 @@ const selectorItem = (item) => {
   // 在底部加阴影
   box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.2);
 
-  &-title {
-    flex: 1 0 auto;
-    width: 0;
-    display: flex;
-    align-items: center;
-    font-size: 16px;
-    color: var(--text-primary);
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    &-text {
-      margin-left: 8px;
-      font-size: 14px;
-      font-weight: 400;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    &-icon {
-      font-size: 18px;
-      color: var(--text-primary);
-    }
-  }
-
   &-center {
     flex: 1 0 auto;
     width: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
     box-sizing: border-box;
 
     &-node {

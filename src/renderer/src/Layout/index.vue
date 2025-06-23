@@ -5,7 +5,7 @@
       <Headerbar v-if="isElectron !== 'web'" />
       <div class="layout-content">
         <Transition name="sidebar-slide">
-          <Sidebar v-show="!hideside" />
+          <Sidebar v-if="!hideside" />
         </Transition>
         <div class="layout-main">
           <router-view />
@@ -87,20 +87,6 @@ if (userInfo.value?._id && mtttoken) {
       width: 100%;
     }
 
-    .showside {
-      transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-      transform-origin: left;
-      transform: scaleX(1);
-      opacity: 1;
-      overflow: hidden;
-    }
-
-    .hideside {
-      transform: scaleX(0);
-      opacity: 0;
-      pointer-events: none;
-    }
-
     .layout-main {
       height: calc(100vh - var(--header-height) - 2em);
       max-height: calc(100vh - var(--header-height) - 2em);
@@ -119,12 +105,7 @@ if (userInfo.value?._id && mtttoken) {
       // &::-webkit-scrollbar {
       //   display: none; /* Chrome, Safari, and Opera */
       // }
-
-      transition: margin-left 0.3s ease-in-out;
-    }
-
-    .layout-main.full {
-      margin-left: 0;
+      transition: all 0.25s ease;
     }
   }
 }

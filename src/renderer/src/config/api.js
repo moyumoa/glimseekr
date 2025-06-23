@@ -14,6 +14,8 @@ export const $api = {
     /* 查询空间文件夹 */
     list: (belong, params) =>
       request({ url: `/middle/space/folder/${belong}`, method: 'get', params }),
+    /* 查询详情 */
+    detail: (id) => request({ url: `/middle/space/folder-once/${id}`, method: 'get' }),
     /* 修改更新空间文件夹 */
     update: (data) => request({ url: '/middle/space/folder', method: 'put', data }),
     /* 删除空间文件夹 */

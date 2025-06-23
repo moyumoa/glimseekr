@@ -51,7 +51,10 @@ export function useSubPage() {
   /**
    * 关闭子页面（返回上一页）
    */
-  function closeSubPage() {
+  function closeSubPage () {
+    show.value = false
+    subPath.value = null
+    query.value = {}
     window.history.back()
   }
 
